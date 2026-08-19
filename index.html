@@ -90,7 +90,7 @@
     const password = document.getElementById('gatePassword').value;
     const btn = document.getElementById('gateLoginBtn');
     btn.disabled = true; btn.textContent = 'Checking...';
-    fetch(BASE_URL, { method: 'POST', body: JSON.stringify({ action: 'checkLogin', payload: { username: username, password: password } }) })
+    fetch(BASE_URL + '?action=checkLogin&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password))
       .then(function(res) { return res.json(); })
       .then(function(result) {
         btn.disabled = false; btn.textContent = 'Sign In';
@@ -109,7 +109,7 @@
     const email = document.getElementById('forgotEmail').value.trim();
     const btn = document.getElementById('forgotBtn');
     btn.disabled = true; btn.textContent = 'Sending...';
-    fetch(BASE_URL, { method: 'POST', body: JSON.stringify({ action: 'forgotPassword', payload: { email: email } }) })
+    fetch(BASE_URL + '?action=forgotPassword&email=' + encodeURIComponent(email))
       .then(function(res) { return res.json(); })
       .then(function(result) {
         btn.disabled = false; btn.textContent = 'Send Password';
