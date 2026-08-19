@@ -113,8 +113,6 @@
   #editStatus.err { display: block; background: #fdecea; color: #c62828; }
   #editStatus.loading { display: block; background: rgba(0,0,0,0.04); color: #888; }
 </style>
-</head>
-<body>
 <style>
   #loginGate {
     position: fixed; inset: 0; background: linear-gradient(135deg, #4d555b, #21409a); z-index: 9999;
@@ -135,12 +133,13 @@
   #loginGate #forgotSection { display: none; }
   #appContent { display: none; }
 </style>
-
+</head>
+<body>
 <div id="loginGate">
   <div class="box">
     <div id="loginSection">
       <h2>HSE PALMS</h2>
-      <div class="sub">Sign in to continue</div>
+      <div class="sub">Sign in with your @altasnim.com email</div>
       <label>Username</label>
       <input type="text" id="gateUsername" value="ATNM HSE" disabled style="background:#f2f4f6;color:#8891a0;">
       <label>Password</label>
@@ -180,7 +179,7 @@
     const password = document.getElementById('gatePassword').value;
     const btn = document.getElementById('gateLoginBtn');
     btn.disabled = true; btn.textContent = 'Checking...';
-    fetch(BASE_URL, { method: 'POST', body: JSON.stringify({ action: 'checkLogin', payload: { username: username, password: password } }) })
+    fetch(BASE_URL + '?action=checkLogin&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password))
       .then(function(res) { return res.json(); })
       .then(function(result) {
         btn.disabled = false; btn.textContent = 'Sign In';
@@ -199,7 +198,7 @@
     const email = document.getElementById('forgotEmail').value.trim();
     const btn = document.getElementById('forgotBtn');
     btn.disabled = true; btn.textContent = 'Sending...';
-    fetch(BASE_URL, { method: 'POST', body: JSON.stringify({ action: 'forgotPassword', payload: { email: email } }) })
+    fetch(BASE_URL + '?action=forgotPassword&email=' + encodeURIComponent(email))
       .then(function(res) { return res.json(); })
       .then(function(result) {
         btn.disabled = false; btn.textContent = 'Send Password';
@@ -334,7 +333,7 @@
 </div>
 
 <script>
-const BASE_URL = "https://script.google.com/a/macros/altasnim.com/s/AKfycbyRmjlrHzO90v_jHfdfoDK6097Fr5r593xLtcjoOnl2s6ZIrpugy7_m_ezT3sxB_OYLwA/exec"; // <-- paste the URL from the NEW "Anyone" access deployment here
+const BASE_URL = "https://script.google.com/a/macros/altasnim.com/s/AKfycbyRmjlrHzO90v_jHfdfoDK6097Fr5r593xLtcjoOnl2s6ZIrpugy7_m_ezT3sxB_OYLwA/exec";
 
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -535,7 +534,7 @@ function submitTransfer() {
   if (!effectiveDate) { status.className = 'err'; status.textContent = 'Effective date is required.'; return; }
 
   const payload = { employeeId: currentEditEmployeeId, toCluster: toCluster, effectiveDate: effectiveDate };
-  serverPost('initiateTransfer', payload)
+  serverGet('initiateTransferGet', payload)
     .then(function(result) {
       if (!result.success) { status.className = 'err'; status.textContent = 'Error: ' + result.error; return; }
       if (!result.competencyPass) {
@@ -637,7 +636,7 @@ function saveBackup(employeeId, timestamp) {
   const status = document.getElementById('detailStatus');
   status.className = '';
   const backupName = document.getElementById('backupNameInput').value;
-  serverPost('assignBackup', { employeeId: employeeId, timestamp: timestamp, backupName: backupName })
+  serverGet('assignBackupGet', { employeeId: employeeId, timestamp: timestamp, backupName: backupName })
     .then(function(result) {
       if (!result.success) { status.className = 'err'; status.textContent = 'Error: ' + result.error; return; }
       status.className = 'ok'; status.textContent = 'Backup saved.';
@@ -682,7 +681,7 @@ function openTransferDetail(r) {
 function resendCards(transferId) {
   const status = document.getElementById('detailStatus');
   status.className = '';
-  serverPost('resendApprovalCards', { transferId: transferId })
+  serverGet('resendApprovalCardsGet', { transferId: transferId })
     .then(function(result) {
       status.className = result.success ? 'ok' : 'err';
       status.textContent = result.success ? result.message : result.error;
@@ -694,6 +693,8 @@ function closeDetailPopup() {
   document.getElementById('overlay2').classList.remove('show');
   document.getElementById('detailPopup').classList.remove('show');
 }
+
+loadData();
 
 window.onGateUnlocked = loadData;
 </script>
