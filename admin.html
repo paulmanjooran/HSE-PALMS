@@ -141,11 +141,12 @@
 
 <div id="adminKeyGate">
   <div class="box">
-    <h2>Admin Control</h2>
-    <div class="sub">This area needs a separate admin key, on top of the portal password you just entered.</div>
+    <h2>Admin Key Required</h2>
+    <div class="sub" id="adminKeyPromptText">This action needs the separate admin key, on top of the portal password.</div>
     <label>Admin Key</label>
     <input type="password" id="adminKeyInput">
-    <button class="primary" id="adminKeyBtn" onclick="attemptAdminKey()">Unlock Admin Control</button>
+    <button class="primary" id="adminKeyBtn" onclick="submitAdminKeyModal()">Confirm</button>
+    <button class="primary" id="adminKeyCancelBtn" onclick="cancelAdminKeyModal()" style="background:#f2f4f6;color:#4d555b;margin-top:8px;">Cancel</button>
     <div id="adminKeyStatus"></div>
   </div>
 </div>
@@ -214,9 +215,12 @@
         "<strong id="portalUsernameLabel">...</strong>". Only @altasnim.com emails can
         request this via "Forgot Password" on the login screen.
       </div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="loadPortalPassword()">View Current Password</button>
+      </div>
       <label style="display:block;font-size:10.5px;font-weight:700;color:#8891a0;text-transform:uppercase;margin-top:8px;">New Password</label>
       <div style="display:flex;gap:8px;margin-top:4px;">
-        <input type="password" id="portalPassword" placeholder="At least 6 characters" style="flex:1;padding:7px 9px;border-radius:6px;border:1px solid #dfe3e7;font-size:12.5px;">
+        <input type="password" id="portalPassword" placeholder="Click 'View Current Password' or type a new one" style="flex:1;padding:7px 9px;border-radius:6px;border:1px solid #dfe3e7;font-size:12.5px;">
         <button class="btn btn-ghost" onclick="toggleShowPassword('portalPassword','showPwBtn')" id="showPwBtn" style="flex-shrink:0;">Show</button>
       </div>
       <div class="btn-row" style="margin-top:10px;">
@@ -362,16 +366,27 @@ window.attemptForgot = function() {
     });
 };
 
-/* ---------------- ADMIN KEY GATE (second layer, specific to this page) ---------------- */
-function showAdminKeyGate() {
-  if (sessionStorage.getItem('hsePalmsAdminKey')) {
-    unlockAdminContent();
+/* ---------------- ADMIN KEY MODAL (shown per-action, not upfront) ---------------- */
+// pendingAdminAction holds the function to run once a valid key is confirmed.
+let pendingAdminAction = null;
+
+function requireAdminKey(promptText, actionFn) {
+  const cached = sessionStorage.getItem('hsePalmsAdminKey');
+  if (cached) {
+    // Try with the cached key first - if the action itself reports "not authorized"
+    // (e.g. key was changed elsewhere), the action's own error handling will surface
+    // that; we don't pre-verify on every single click to keep this fast.
+    actionFn(cached);
     return;
   }
+  pendingAdminAction = actionFn;
+  document.getElementById('adminKeyPromptText').textContent = promptText || 'This action needs the separate admin key, on top of the portal password.';
+  document.getElementById('adminKeyInput').value = '';
+  document.getElementById('adminKeyStatus').className = '';
   document.getElementById('adminKeyGate').classList.add('show');
 }
 
-window.attemptAdminKey = function() {
+window.submitAdminKeyModal = function() {
   const key = document.getElementById('adminKeyInput').value;
   const btn = document.getElementById('adminKeyBtn');
   const status = document.getElementById('adminKeyStatus');
@@ -380,7 +395,7 @@ window.attemptAdminKey = function() {
   fetch(BASE_URL + '?action=adminActionGet&subAction=verifyAdminKey&adminKey=' + encodeURIComponent(key))
     .then(function(res) { return res.json(); })
     .then(function(result) {
-      btn.disabled = false; btn.textContent = 'Unlock Admin Control';
+      btn.disabled = false; btn.textContent = 'Confirm';
       if (!result.valid) {
         status.className = 'err';
         status.textContent = 'Incorrect admin key.';
@@ -388,43 +403,47 @@ window.attemptAdminKey = function() {
       }
       sessionStorage.setItem('hsePalmsAdminKey', key);
       document.getElementById('adminKeyGate').classList.remove('show');
-      unlockAdminContent();
+      if (pendingAdminAction) { pendingAdminAction(key); pendingAdminAction = null; }
     })
     .catch(function(err) {
-      btn.disabled = false; btn.textContent = 'Unlock Admin Control';
+      btn.disabled = false; btn.textContent = 'Confirm';
       status.className = 'err';
       status.textContent = 'Failed: ' + err.message;
     });
 };
 
+window.cancelAdminKeyModal = function() {
+  document.getElementById('adminKeyGate').classList.remove('show');
+  pendingAdminAction = null;
+};
+
+// Portal password alone unlocks the whole page - viewing diagnostics, logs,
+// approvers, and dropdowns needs no admin key at all. The key only appears
+// when an actual write/action button is clicked (see requireAdminKey above).
+document.addEventListener('DOMContentLoaded', function() {
+  if (sessionStorage.getItem('hsePalmsAuth') === 'true') {
+    document.getElementById('loginGate').style.display = 'none';
+    unlockAdminContent();
+  }
+});
+
 function unlockAdminContent() {
   document.getElementById('appContent').style.display = 'block';
   runAll();
-  loadPortalPassword();
   loadApprovers();
   loadDropdownOptions();
 }
 
-// Skip the gate(s) if already authenticated this browser session
-document.addEventListener('DOMContentLoaded', function() {
-  if (sessionStorage.getItem('hsePalmsAuth') === 'true') {
-    document.getElementById('loginGate').style.display = 'none';
-    showAdminKeyGate();
-  }
-});
-
 /* ---------------- SERVER CALL HELPERS ---------------- */
-function getAdminKey_() { return sessionStorage.getItem('hsePalmsAdminKey') || ''; }
-
 function adminGet(subAction, extraParams) {
-  let url = BASE_URL + '?action=adminActionGet&subAction=' + subAction + '&adminKey=' + encodeURIComponent(getAdminKey_());
+  let url = BASE_URL + '?action=adminActionGet&subAction=' + subAction + '&adminKey=' + encodeURIComponent(sessionStorage.getItem('hsePalmsAdminKey') || '');
   if (extraParams) Object.keys(extraParams).forEach(k => url += '&' + k + '=' + encodeURIComponent(extraParams[k]));
   return fetch(url).then(function(res) { return res.json(); });
 }
-function adminPost(subAction, payload) {
+function adminPost(subAction, payload, adminKey) {
   return fetch(BASE_URL, {
     method: 'POST',
-    body: JSON.stringify({ action: 'adminAction', subAction: subAction, adminKey: getAdminKey_(), payload: payload || {} })
+    body: JSON.stringify({ action: 'adminAction', subAction: subAction, adminKey: adminKey, payload: payload || {} })
   }).then(function(res) { return res.json(); });
 }
 
@@ -513,59 +532,73 @@ function copyText(text, btn) {
 }
 
 function clearCache() {
-  adminPost('clearCache').then(function(r) {
-    setActionStatus(r.success ? r.message : r.error, r.success ? 'ok' : 'err');
-  }).catch(function(err) { setActionStatus('Error: ' + err.message, 'err'); });
+  requireAdminKey('Clear the dashboard cache?', function(key) {
+    adminPost('clearCache', {}, key).then(function(r) {
+      setActionStatus(r.success ? r.message : r.error, r.success ? 'ok' : 'err');
+    }).catch(function(err) { setActionStatus('Error: ' + err.message, 'err'); });
+  });
 }
 
 function reinstallTriggers() {
-  adminPost('reinstallTriggers').then(function(r) {
-    setActionStatus(r.success ? r.message : r.error, r.success ? 'ok' : 'err');
-    runAll();
-  }).catch(function(err) { setActionStatus('Error: ' + err.message, 'err'); });
+  requireAdminKey('Reinstall time-based triggers?', function(key) {
+    adminPost('reinstallTriggers', {}, key).then(function(r) {
+      setActionStatus(r.success ? r.message : r.error, r.success ? 'ok' : 'err');
+      runAll();
+    }).catch(function(err) { setActionStatus('Error: ' + err.message, 'err'); });
+  });
 }
 
 function sendTestEmail() {
-  adminPost('sendTestEmail').then(function(r) {
-    setActionStatus(r.success ? r.message : r.error, r.success ? 'ok' : 'err');
-  }).catch(function(err) { setActionStatus('Error: ' + err.message, 'err'); });
+  requireAdminKey('Send a test email to the HSE Manager?', function(key) {
+    adminPost('sendTestEmail', {}, key).then(function(r) {
+      setActionStatus(r.success ? r.message : r.error, r.success ? 'ok' : 'err');
+    }).catch(function(err) { setActionStatus('Error: ' + err.message, 'err'); });
+  });
 }
 
 function confirmClearLog() {
   if (!confirm('Clear all System_Log entries? This cannot be undone.')) return;
-  adminPost('clearLog').then(function(r) {
-    setActionStatus(r.message, 'ok');
-    runAll();
-  }).catch(function(err) { setActionStatus('Error: ' + err.message, 'err'); });
+  requireAdminKey('Confirm admin key to clear the System Log.', function(key) {
+    adminPost('clearLog', {}, key).then(function(r) {
+      setActionStatus(r.message, 'ok');
+      runAll();
+    }).catch(function(err) { setActionStatus('Error: ' + err.message, 'err'); });
+  });
 }
 
 function fixPhotoPermissions() {
-  adminPost('fixPhotos').then(function(r) {
-    setActionStatus(r.success ? r.message : r.error, r.success ? 'ok' : 'err');
-  }).catch(function(err) { setActionStatus('Error: ' + err.message, 'err'); });
+  requireAdminKey('Make all existing photos viewable by everyone?', function(key) {
+    adminPost('fixPhotos', {}, key).then(function(r) {
+      setActionStatus(r.success ? r.message : r.error, r.success ? 'ok' : 'err');
+    }).catch(function(err) { setActionStatus('Error: ' + err.message, 'err'); });
+  });
 }
 
 function removeSample() {
   if (!confirm('Remove the template/sample row (ATNM-0001 / Sample Name) from Personnel_Master? This only matches that exact row - no other data is touched.')) return;
-  adminPost('removeSample').then(function(r) {
-    setActionStatus(r.message, 'ok');
-    runAll();
-  }).catch(function(err) { setActionStatus('Error: ' + err.message, 'err'); });
+  requireAdminKey('Confirm admin key to remove sample data.', function(key) {
+    adminPost('removeSample', {}, key).then(function(r) {
+      setActionStatus(r.message, 'ok');
+      runAll();
+    }).catch(function(err) { setActionStatus('Error: ' + err.message, 'err'); });
+  });
 }
 
 function runRotationCheck() {
-  const el = document.getElementById('rotationStatus');
-  el.style.display = 'block';
-  el.style.background = '#eceff1';
-  el.textContent = 'Running...';
-  adminPost('runRotationCheck').then(function(r) {
-    el.style.background = r.success ? '#e8f5e9' : '#fdecea';
-    el.style.color = r.success ? '#2e7d32' : '#c62828';
-    el.textContent = r.success ? r.message : r.error;
-    runAll();
-  }).catch(function(err) {
-    el.style.background = '#fdecea'; el.style.color = '#c62828';
-    el.textContent = 'Error: ' + err.message;
+  requireAdminKey('Run the rotation policy check now?', function(key) {
+    const el = document.getElementById('rotationStatus');
+    el.style.display = 'block';
+    el.style.background = '#eceff1';
+    el.textContent = 'Running...';
+    adminPost('runRotationCheck', {}, key).then(function(r) {
+      el.style.background = r.success ? '#e8f5e9' : '#fdecea';
+      el.style.color = r.success ? '#2e7d32' : '#c62828';
+      el.textContent = r.success ? r.message : r.error;
+      runAll();
+    }).catch(function(err) {
+      el.style.background = '#fdecea'; el.style.color = '#c62828';
+      el.textContent = 'Error: ' + err.message;
+    });
   });
 }
 
@@ -583,22 +616,24 @@ function loadApprovers() {
 }
 
 function saveApprovers() {
-  const el = document.getElementById('approversStatus');
-  el.style.display = 'block';
-  el.style.background = '#eceff1';
-  el.textContent = 'Saving...';
-  const payload = {
-    gm: document.getElementById('approverGm').value,
-    manager: document.getElementById('approverManager').value,
-    lead: document.getElementById('approverLead').value
-  };
-  adminPost('saveApprovers', payload).then(function(r) {
-    el.style.background = r.success ? '#e8f5e9' : '#fdecea';
-    el.style.color = r.success ? '#2e7d32' : '#c62828';
-    el.textContent = r.success ? r.message : r.error;
-  }).catch(function(err) {
-    el.style.background = '#fdecea'; el.style.color = '#c62828';
-    el.textContent = 'Error: ' + err.message;
+  requireAdminKey('Confirm admin key to save transfer approvers.', function(key) {
+    const el = document.getElementById('approversStatus');
+    el.style.display = 'block';
+    el.style.background = '#eceff1';
+    el.textContent = 'Saving...';
+    const payload = {
+      gm: document.getElementById('approverGm').value,
+      manager: document.getElementById('approverManager').value,
+      lead: document.getElementById('approverLead').value
+    };
+    adminPost('saveApprovers', payload, key).then(function(r) {
+      el.style.background = r.success ? '#e8f5e9' : '#fdecea';
+      el.style.color = r.success ? '#2e7d32' : '#c62828';
+      el.textContent = r.success ? r.message : r.error;
+    }).catch(function(err) {
+      el.style.background = '#fdecea'; el.style.color = '#c62828';
+      el.textContent = 'Error: ' + err.message;
+    });
   });
 }
 
@@ -612,40 +647,46 @@ function loadDropdownOptions() {
 }
 
 function saveDropdowns() {
-  const el = document.getElementById('dropdownStatus');
-  el.style.display = 'block';
-  el.style.background = '#eceff1';
-  el.textContent = 'Saving...';
-  const payload = {
-    clusters: document.getElementById('ddClusters').value,
-    roles: document.getElementById('ddRoles').value,
-    shifts: document.getElementById('ddShifts').value,
-    officeClusters: document.getElementById('ddOfficeClusters').value
-  };
-  adminPost('saveDropdowns', payload).then(function(r) {
-    el.style.background = r.success ? '#e8f5e9' : '#fdecea';
-    el.style.color = r.success ? '#2e7d32' : '#c62828';
-    el.textContent = r.success ? r.message : r.error;
-    loadDropdownOptions();
-  }).catch(function(err) {
-    el.style.background = '#fdecea'; el.style.color = '#c62828';
-    el.textContent = 'Error: ' + err.message;
+  requireAdminKey('Confirm admin key to save dropdown options.', function(key) {
+    const el = document.getElementById('dropdownStatus');
+    el.style.display = 'block';
+    el.style.background = '#eceff1';
+    el.textContent = 'Saving...';
+    const payload = {
+      clusters: document.getElementById('ddClusters').value,
+      roles: document.getElementById('ddRoles').value,
+      shifts: document.getElementById('ddShifts').value,
+      officeClusters: document.getElementById('ddOfficeClusters').value
+    };
+    adminPost('saveDropdowns', payload, key).then(function(r) {
+      el.style.background = r.success ? '#e8f5e9' : '#fdecea';
+      el.style.color = r.success ? '#2e7d32' : '#c62828';
+      el.textContent = r.success ? r.message : r.error;
+      loadDropdownOptions();
+    }).catch(function(err) {
+      el.style.background = '#fdecea'; el.style.color = '#c62828';
+      el.textContent = 'Error: ' + err.message;
+    });
   });
 }
 
 function resetDropdown(which) {
   if (!confirm('Reset ' + which + ' to the built-in default list?')) return;
-  adminPost('resetDropdown', { which: which }).then(function() { loadDropdownOptions(); });
+  requireAdminKey('Confirm admin key to reset this dropdown.', function(key) {
+    adminPost('resetDropdown', { which: which }, key).then(function() { loadDropdownOptions(); });
+  });
 }
 
 function loadPortalPassword() {
-  adminGet('portalPassword').then(function(r) {
-    document.getElementById('portalUsernameLabel').textContent = r.username;
-    if (!r.authorized) {
-      document.getElementById('portalPassword').placeholder = 'Not authorized to view';
-      return;
-    }
-    document.getElementById('portalPassword').value = r.password;
+  requireAdminKey('Confirm admin key to view the portal password.', function(key) {
+    adminGet('portalPassword', { adminKey: key }).then(function(r) {
+      document.getElementById('portalUsernameLabel').textContent = r.username;
+      if (!r.authorized) {
+        document.getElementById('portalPassword').placeholder = 'Not authorized to view';
+        return;
+      }
+      document.getElementById('portalPassword').value = r.password;
+    });
   });
 }
 
@@ -657,18 +698,20 @@ function toggleShowPassword(inputId, btnId) {
 }
 
 function savePortalPassword() {
-  const el = document.getElementById('portalPasswordStatus');
-  el.style.display = 'block';
-  el.style.background = '#eceff1';
-  el.textContent = 'Saving...';
-  const newPassword = document.getElementById('portalPassword').value;
-  adminPost('setPortalPassword', { newPassword: newPassword }).then(function(r) {
-    el.style.background = r.success ? '#e8f5e9' : '#fdecea';
-    el.style.color = r.success ? '#2e7d32' : '#c62828';
-    el.textContent = r.success ? r.message : r.error;
-  }).catch(function(err) {
-    el.style.background = '#fdecea'; el.style.color = '#c62828';
-    el.textContent = 'Error: ' + err.message;
+  requireAdminKey('Confirm admin key to change the portal password.', function(key) {
+    const el = document.getElementById('portalPasswordStatus');
+    el.style.display = 'block';
+    el.style.background = '#eceff1';
+    el.textContent = 'Saving...';
+    const newPassword = document.getElementById('portalPassword').value;
+    adminPost('setPortalPassword', { newPassword: newPassword }, key).then(function(r) {
+      el.style.background = r.success ? '#e8f5e9' : '#fdecea';
+      el.style.color = r.success ? '#2e7d32' : '#c62828';
+      el.textContent = r.success ? r.message : r.error;
+    }).catch(function(err) {
+      el.style.background = '#fdecea'; el.style.color = '#c62828';
+      el.textContent = 'Error: ' + err.message;
+    });
   });
 }
 
@@ -679,7 +722,7 @@ function changeAdminKeyAction() {
   el.textContent = 'Saving...';
   const currentKey = document.getElementById('currentAdminKeyInput').value;
   const newKey = document.getElementById('newAdminKeyInput').value;
-  adminPost('changeAdminKey', { currentKey: currentKey, newKey: newKey }).then(function(r) {
+  adminPost('changeAdminKey', { currentKey: currentKey, newKey: newKey }, currentKey).then(function(r) {
     el.style.background = r.success ? '#e8f5e9' : '#fdecea';
     el.style.color = r.success ? '#2e7d32' : '#c62828';
     el.textContent = r.success ? r.message : r.error;
