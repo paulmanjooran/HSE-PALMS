@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<style>
+  :root { color-scheme: light; --dark: #4d555b; --blue: #21409a; --orange: #f58220; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f5f6; margin: 0; padding: 24px; color: var(--dark); }
+  .card { max-width: 480px; margin: 0 auto; background: #fff; border-radius: 10px; padding: 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  h1 { font-size: 18px; color: var(--dark); margin: 0 0 4px; }
+  .sub { font-size: 12px; color: #888; margin-bottom: 20px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin-top: 16px; margin-bottom: 4px; }
+  select, input { width: 100%; padding: 9px 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
+  button { width: 100%; margin-top: 22px; padding: 11px; background: var(--blue); color: #fff; border: none; border-radius: 5px;
+           font-size: 15px; font-weight: 600; cursor: pointer; }
+  button:disabled { background: #aaa; cursor: not-allowed; }
+  #status { margin-top: 14px; font-size: 13px; padding: 10px; border-radius: 5px; display: none; }
+  #status.ok { display: block; background: #e8f5e9; color: #2e7d32; }
+  #status.warn { display: block; background: #fff3e0; color: var(--orange); }
+  #status.err { display: block; background: #fdecea; color: #c62828; }
+</style>
+<style>
+  #loginGate {
+    position: fixed; inset: 0; background: linear-gradient(135deg, #4d555b, #21409a); z-index: 9999;
+    display: flex; align-items: center; justify-content: center; font-family: 'Segoe UI', Arial, sans-serif;
+  }
+  #loginGate .box { background: #fff; border-radius: 16px; padding: 36px; max-width: 380px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+  #loginGate h2 { margin: 0 0 4px; color: #4d555b; font-size: 19px; }
+  #loginGate .sub { color: #8891a0; font-size: 12.5px; margin-bottom: 22px; }
+  #loginGate label { display: block; font-size: 11.5px; font-weight: 700; color: #8891a0; text-transform: uppercase; margin-top: 14px; margin-bottom: 4px; }
+  #loginGate input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+  #loginGate button.primary { width: 100%; margin-top: 20px; padding: 12px; background: #21409a; color: #fff; border: none;
+    border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  #loginGate button.primary:disabled { background: #aaa; cursor: not-allowed; }
+  #loginGate .forgot-link { text-align: center; margin-top: 14px; font-size: 12.5px; color: #21409a; cursor: pointer; text-decoration: underline; }
+  #loginGate #gateStatus { margin-top: 14px; font-size: 12.5px; padding: 9px 12px; border-radius: 7px; display: none; }
+  #loginGate #gateStatus.err { display: block; background: #fdecea; color: #c62828; }
+  #loginGate #gateStatus.ok { display: block; background: #e8f5e9; color: #2e7d32; }
+  #loginGate #forgotSection { display: none; }
+  #appContent { display: none; }
+</style>
+<style>#appContent{display:none;}</style>
+</head>
+<body>
+<div id="loginGate">
+  <div class="box">
+    <div id="loginSection">
+      <h2>HSE PALMS</h2>
+      <div class="sub">Sign in to continue</div>
+      <label>Username</label>
+      <input type="text" id="gateUsername" value="ATNM HSE" disabled style="background:#f2f4f6;color:#8891a0;">
+      <label>Password</label>
+      <input type="password" id="gatePassword">
+      <button class="primary" id="gateLoginBtn" onclick="attemptLogin()">Sign In</button>
+      <div class="forgot-link" onclick="showForgot()">Forgot password?</div>
+      <div id="gateStatus"></div>
+    </div>
+    <div id="forgotSection">
+      <h2>Forgot Password</h2>
+      <div class="sub">Enter your @altasnim.com email - the password will be sent to you.</div>
+      <label>Email</label>
+      <input type="email" id="forgotEmail" placeholder="yourname@altasnim.com">
+      <button class="primary" id="forgotBtn" onclick="attemptForgot()">Send Password</button>
+      <div class="forgot-link" onclick="showLogin()">Back to sign in</div>
+      <div id="gateStatus2"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  function setGateStatus(id, msg, cls) {
+    const el = document.getElementById(id);
+    el.className = cls; el.textContent = msg;
+  }
+  window.showForgot = function() {
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('forgotSection').style.display = 'block';
+  };
+  window.showLogin = function() {
+    document.getElementById('forgotSection').style.display = 'none';
+    document.getElementById('loginSection').style.display = 'block';
+  };
+  window.attemptLogin = function() {
+    const username = document.getElementById('gateUsername').value.trim();
+    const password = document.getElementById('gatePassword').value;
+    const btn = document.getElementById('gateLoginBtn');
+    btn.disabled = true; btn.textContent = 'Checking...';
+    fetch(BASE_URL + '?action=checkLogin&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password))
+      .then(function(res) { return res.json(); })
+      .then(function(result) {
+        btn.disabled = false; btn.textContent = 'Sign In';
+        if (!result.success) { setGateStatus('gateStatus', result.error, 'err'); return; }
+        sessionStorage.setItem('hsePalmsAuth', 'true');
+        document.getElementById('loginGate').style.display = 'none';
+        document.getElementById('appContent').style.display = 'block';
+        if (typeof onGateUnlocked === 'function') onGateUnlocked();
+      })
+      .catch(function(err) {
+        btn.disabled = false; btn.textContent = 'Sign In';
+        setGateStatus('gateStatus', 'Login failed: ' + err.message, 'err');
+      });
+  };
+  window.attemptForgot = function() {
+    const email = document.getElementById('forgotEmail').value.trim();
+    const btn = document.getElementById('forgotBtn');
+    btn.disabled = true; btn.textContent = 'Sending...';
+    fetch(BASE_URL + '?action=forgotPassword&email=' + encodeURIComponent(email))
+      .then(function(res) { return res.json(); })
+      .then(function(result) {
+        btn.disabled = false; btn.textContent = 'Send Password';
+        setGateStatus('gateStatus2', result.success ? result.message : result.error, result.success ? 'ok' : 'err');
+      })
+      .catch(function(err) {
+        btn.disabled = false; btn.textContent = 'Send Password';
+        setGateStatus('gateStatus2', 'Failed: ' + err.message, 'err');
+      });
+  };
+  // Skip the gate if already authenticated this browser session.
+  // Deferred to DOMContentLoaded so onGateUnlocked (defined later in the page,
+  // after the main content script) is guaranteed to exist by the time we call it.
+  document.addEventListener('DOMContentLoaded', function() {
+    if (sessionStorage.getItem('hsePalmsAuth') === 'true') {
+      document.getElementById('loginGate').style.display = 'none';
+      document.getElementById('appContent').style.display = 'block';
+      if (typeof onGateUnlocked === 'function') onGateUnlocked();
+    }
+  });
+})();
+</script>
+
+<div id="appContent">
+<div class="card">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+    <h1>HSE Dept Annual Leave Declaration</h1>
+    <button type="button" onclick="location.reload()" style="border:none;background:#f2f4f6;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;color:#4d555b;">↻ Refresh</button>
+  </div>
+  <div class="sub">Declare your desired Annual leave month at least 30 days in advance so cluster coverage can be planned.</div>
+
+  <form id="leaveForm">
+    <label>Employee ID *</label>
+    <input type="text" id="employeeId" placeholder="e.g. ATNM-0001" required>
+
+    <label>Desired Leave Month *</label>
+    <select id="desiredMonth" required>
+      <option value="">Select month</option>
+      <option>Jan</option><option>Feb</option><option>Mar</option><option>Apr</option>
+      <option>May</option><option>Jun</option><option>Jul</option><option>Aug</option>
+      <option>Sep</option><option>Oct</option><option>Nov</option><option>Dec</option>
+    </select>
+
+    <label>Preferred Start Date *</label>
+    <input type="date" id="preferredStart" required>
+
+    <label>Preferred End Date *</label>
+    <input type="date" id="preferredEnd" required>
+
+    <button type="submit" id="submitBtn">Submit Declaration</button>
+  </form>
+  <div id="status"></div>
+</div>
+
+<script>
+    const BASE_URL = "https://script.google.com/macros/s/AKfycbyRmjlrHzO90v_jHfdfoDK6097Fr5r593xLtcjoOnl2s6ZIrpugy7_m_ezT3sxB_OYLwA/exec";
+
+  function setStatus(msg, cls) {
+    const el = document.getElementById('status');
+    el.className = cls;
+    el.textContent = msg;
+  }
+
+  document.getElementById('leaveForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Submitting...';
+    setStatus('', '');
+
+    const payload = {
+      employeeId: document.getElementById('employeeId').value.trim(),
+      desiredMonth: document.getElementById('desiredMonth').value,
+      preferredStart: document.getElementById('preferredStart').value,
+      preferredEnd: document.getElementById('preferredEnd').value
+    };
+
+    fetch(BASE_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'submitLeave', payload: payload })
+    })
+      .then(function(res) { return res.json(); })
+      .then(function(result) {
+        btn.disabled = false;
+        btn.textContent = 'Submit Declaration';
+        if (!result.success) {
+          setStatus('Error: ' + result.error, 'err');
+          return;
+        }
+        if (result.conflict) {
+          setStatus('Submitted. NOTE: another team member already declared the same month/cluster/role - flagged for the HSE Manager to review coverage.', 'warn');
+        } else {
+          setStatus('Declaration submitted successfully for ' + result.employeeName + '.', 'ok');
+        }
+        document.getElementById('leaveForm').reset();
+      })
+      .catch(function(err) {
+        btn.disabled = false;
+        btn.textContent = 'Submit Declaration';
+        setStatus('Submission failed: ' + err.message, 'err');
+      });
+  });
+</script>
+</div>
+</body>
+</html>
