@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { color-scheme: light; --dark: #4d555b; --blue: #21409a; --orange: #f58220; --green: #2e7d32; --red: #c62828; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Inter', sans-serif; background: #eef1f4; color: var(--dark); padding: 24px; }
+  h1, h2, .brand-font { font-family: 'Manrope', sans-serif; }
+  #header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+  #header h1 { font-size: 19px; margin: 0; }
+  #header .sub { font-size: 12px; color: #8891a0; margin-top: 2px; }
+  .btn {
+    border: none; border-radius: 8px; padding: 9px 16px; font-family: 'Manrope'; font-weight: 700; font-size: 12.5px;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-primary { background: var(--blue); color: #fff; }
+  .btn-ghost { background: #fff; color: var(--dark); border: 1px solid #dfe3e7; }
+  .btn-danger { background: #fff; color: var(--red); border: 1px solid #f0c4c4; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  #overallBanner {
+    padding: 16px 20px; border-radius: 12px; margin-bottom: 20px; font-family: 'Manrope'; font-weight: 700;
+    font-size: 14px; display: flex; align-items: center; gap: 10px;
+  }
+  #overallBanner.pass { background: #e8f5e9; color: var(--green); }
+  #overallBanner.warn { background: #fff3e0; color: var(--orange); }
+  #overallBanner.fail { background: #fdecea; color: var(--red); }
+  #overallBanner.loading { background: #eceff1; color: #8891a0; }
+
+  .grid2 { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+
+  .panel { background: #fff; border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 18px; }
+  .panel h2 { font-size: 13.5px; margin: 0 0 12px; display: flex; align-items: center; justify-content: space-between; }
+
+  .check-row {
+    display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f2f4f6; font-size: 12.5px;
+  }
+  .check-row:last-child { border-bottom: none; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+  .dot.pass { background: var(--green); }
+  .dot.warn { background: var(--orange); }
+  .dot.fail { background: var(--red); }
+  .check-name { font-weight: 700; }
+  .check-detail { color: #8891a0; margin-top: 1px; }
+  .category-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #b0b6bd; font-weight: 700;
+    margin: 14px 0 4px;
+  }
+  .category-label:first-child { margin-top: 0; }
+
+  .url-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 0; font-size: 12px; border-bottom: 1px solid #f2f4f6; }
+  .url-row:last-child { border-bottom: none; }
+  .url-row .label { font-weight: 700; flex-shrink: 0; }
+  .url-row .val { color: #8891a0; font-family: monospace; font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .copy-btn { border: none; background: #eef1f4; border-radius: 6px; padding: 4px 8px; font-size: 10.5px; cursor: pointer; flex-shrink: 0; }
+  .copy-btn:hover { background: #dfe3e7; }
+
+  .count-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .count-card { text-align: center; background: #f7f8fa; border-radius: 10px; padding: 12px 6px; }
+  .count-card .num { font-family: 'Manrope'; font-weight: 800; font-size: 20px; color: var(--blue); }
+  .count-card .lbl { font-size: 9.5px; color: #8891a0; margin-top: 2px; text-transform: uppercase; letter-spacing: .03em; }
+
+  table.logtable { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  table.logtable th { text-align: left; padding: 6px 8px; background: #f7f8fa; color: #8891a0; font-weight: 700; font-size: 10px; text-transform: uppercase; }
+  table.logtable td { padding: 6px 8px; border-bottom: 1px solid #f2f4f6; vertical-align: top; }
+  .event-tag { font-size: 9.5px; font-weight: 700; padding: 2px 6px; border-radius: 5px; background: #eef1f4; white-space: nowrap; }
+  .event-tag.error { background: #fdecea; color: var(--red); }
+
+  #actionStatus { margin-top: 10px; font-size: 12px; padding: 8px 12px; border-radius: 8px; display: none; }
+  #actionStatus.ok { display: block; background: #e8f5e9; color: var(--green); }
+  #actionStatus.err { display: block; background: #fdecea; color: var(--red); }
+
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  #loginGate {
+    position: fixed; inset: 0; background: linear-gradient(135deg, #4d555b, #21409a); z-index: 9999;
+    display: flex; align-items: center; justify-content: center; font-family: 'Segoe UI', Arial, sans-serif;
+  }
+  #loginGate .box { background: #fff; border-radius: 16px; padding: 36px; max-width: 380px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+  #loginGate h2 { margin: 0 0 4px; color: #4d555b; font-size: 19px; }
+  #loginGate .sub { color: #8891a0; font-size: 12.5px; margin-bottom: 22px; }
+  #loginGate label { display: block; font-size: 11.5px; font-weight: 700; color: #8891a0; text-transform: uppercase; margin-top: 14px; margin-bottom: 4px; }
+  #loginGate input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+  #loginGate button.primary { width: 100%; margin-top: 20px; padding: 12px; background: #21409a; color: #fff; border: none;
+    border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  #loginGate button.primary:disabled { background: #aaa; cursor: not-allowed; }
+  #loginGate .forgot-link { text-align: center; margin-top: 14px; font-size: 12.5px; color: #21409a; cursor: pointer; text-decoration: underline; }
+  #loginGate #gateStatus { margin-top: 14px; font-size: 12.5px; padding: 9px 12px; border-radius: 7px; display: none; }
+  #loginGate #gateStatus.err { display: block; background: #fdecea; color: #c62828; }
+  #loginGate #gateStatus.ok { display: block; background: #e8f5e9; color: #2e7d32; }
+  #loginGate #forgotSection { display: none; }
+  #appContent { display: none; }
+
+  #adminKeyGate {
+    position: fixed; inset: 0; background: linear-gradient(135deg, #4d555b, #21409a); z-index: 9998;
+    display: none; align-items: center; justify-content: center; font-family: 'Segoe UI', Arial, sans-serif;
+  }
+  #adminKeyGate.show { display: flex; }
+  #adminKeyGate .box { background: #fff; border-radius: 16px; padding: 36px; max-width: 380px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+  #adminKeyGate h2 { margin: 0 0 4px; color: #4d555b; font-size: 19px; }
+  #adminKeyGate .sub { color: #8891a0; font-size: 12.5px; margin-bottom: 22px; }
+  #adminKeyGate label { display: block; font-size: 11.5px; font-weight: 700; color: #8891a0; text-transform: uppercase; margin-top: 14px; margin-bottom: 4px; }
+  #adminKeyGate input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+  #adminKeyGate button.primary { width: 100%; margin-top: 20px; padding: 12px; background: #21409a; color: #fff; border: none;
+    border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  #adminKeyStatus { margin-top: 14px; font-size: 12.5px; padding: 9px 12px; border-radius: 7px; display: none; }
+  #adminKeyStatus.err { display: block; background: #fdecea; color: #c62828; }
+</style>
+</head>
+<body>
+
+<div id="loginGate">
+  <div class="box">
+    <div id="loginSection">
+      <h2>HSE PALMS</h2>
+      <div class="sub">Sign in to continue</div>
+      <label>Username</label>
+      <input type="text" id="gateUsername" value="ATNM HSE" disabled style="background:#f2f4f6;color:#8891a0;">
+      <label>Password</label>
+      <input type="password" id="gatePassword">
+      <button class="primary" id="gateLoginBtn" onclick="attemptLogin()">Sign In</button>
+      <div class="forgot-link" onclick="showForgot()">Forgot password?</div>
+      <div id="gateStatus"></div>
+    </div>
+    <div id="forgotSection">
+      <h2>Forgot Password</h2>
+      <div class="sub">Enter your @altasnim.com email - the password will be sent to you.</div>
+      <label>Email</label>
+      <input type="email" id="forgotEmail" placeholder="yourname@altasnim.com">
+      <button class="primary" id="forgotBtn" onclick="attemptForgot()">Send Password</button>
+      <div class="forgot-link" onclick="showLogin()">Back to sign in</div>
+      <div id="gateStatus2"></div>
+    </div>
+  </div>
+</div>
+
+<div id="adminKeyGate">
+  <div class="box">
+    <h2>Admin Control</h2>
+    <div class="sub">This area needs a separate admin key, on top of the portal password you just entered.</div>
+    <label>Admin Key</label>
+    <input type="password" id="adminKeyInput">
+    <button class="primary" id="adminKeyBtn" onclick="attemptAdminKey()">Unlock Admin Control</button>
+    <div id="adminKeyStatus"></div>
+  </div>
+</div>
+
+<div id="appContent">
+
+<div id="header">
+  <div>
+    <h1>HSE PALMS &mdash; Admin Control</h1>
+    <div class="sub">System health, cache, URLs, logs &amp; reset tools</div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" onclick="runAll()">↻ Refresh All</button>
+  </div>
+</div>
+
+<div id="overallBanner" class="loading">Running diagnostics...</div>
+
+<div class="grid2">
+  <div>
+    <div class="panel">
+      <h2>Health Checks</h2>
+      <div id="checksHost">Loading...</div>
+    </div>
+
+    <div class="panel">
+      <h2>System Log <span style="font-weight:400; color:#8891a0; font-size:11px;">(last 20)</span></h2>
+      <table class="logtable">
+        <thead><tr><th>Time</th><th>Event</th><th>Details</th></tr></thead>
+        <tbody id="logBody"><tr><td colspan="3">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>Data Snapshot</h2>
+      <div class="count-grid" id="countGrid"></div>
+    </div>
+
+    <div class="panel">
+      <h2>System Links</h2>
+      <div id="urlsHost"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Cache</h2>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="clearCache()">Clear Dashboard Cache</button>
+      </div>
+      <div id="actionStatus"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Rotation Policy</h2>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="runRotationCheck()">Run Rotation Check Now</button>
+      </div>
+      <div id="rotationStatus" style="margin-top:10px;font-size:12px;display:none;padding:8px 12px;border-radius:8px;"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Portal Login</h2>
+      <div style="font-size:11.5px;color:#8891a0;margin-bottom:10px;">
+        Password gate on the public GitHub Pages site. Username is fixed as
+        "<strong id="portalUsernameLabel">...</strong>". Only @altasnim.com emails can
+        request this via "Forgot Password" on the login screen.
+      </div>
+      <label style="display:block;font-size:10.5px;font-weight:700;color:#8891a0;text-transform:uppercase;margin-top:8px;">New Password</label>
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        <input type="password" id="portalPassword" placeholder="At least 6 characters" style="flex:1;padding:7px 9px;border-radius:6px;border:1px solid #dfe3e7;font-size:12.5px;">
+        <button class="btn btn-ghost" onclick="toggleShowPassword('portalPassword','showPwBtn')" id="showPwBtn" style="flex-shrink:0;">Show</button>
+      </div>
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="btn btn-primary" onclick="savePortalPassword()">Update Password</button>
+      </div>
+      <div id="portalPasswordStatus" style="margin-top:10px;font-size:12px;display:none;padding:8px 12px;border-radius:8px;"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Admin Key</h2>
+      <div style="font-size:11.5px;color:#8891a0;margin-bottom:10px;">
+        The second key that gates this whole Admin Control page. Changing it requires the
+        current key - write down the new one somewhere safe before saving, there's no recovery
+        if you lose it besides editing Script Properties directly in Apps Script.
+      </div>
+      <label style="display:block;font-size:10.5px;font-weight:700;color:#8891a0;text-transform:uppercase;margin-top:8px;">Current Admin Key</label>
+      <input type="password" id="currentAdminKeyInput" style="width:100%;padding:7px 9px;border-radius:6px;border:1px solid #dfe3e7;font-size:12.5px;margin-top:4px;">
+      <label style="display:block;font-size:10.5px;font-weight:700;color:#8891a0;text-transform:uppercase;margin-top:10px;">New Admin Key</label>
+      <input type="password" id="newAdminKeyInput" placeholder="At least 8 characters" style="width:100%;padding:7px 9px;border-radius:6px;border:1px solid #dfe3e7;font-size:12.5px;margin-top:4px;">
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="btn btn-primary" onclick="changeAdminKeyAction()">Update Admin Key</button>
+      </div>
+      <div id="adminKeyChangeStatus" style="margin-top:10px;font-size:12px;display:none;padding:8px 12px;border-radius:8px;"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Transfer Approvers</h2>
+      <div style="font-size:11.5px;color:#8891a0;margin-bottom:10px;">Emails for the 3-way transfer approval flow. Blank fields fall back to the HSE Manager email.</div>
+      <label style="display:block;font-size:10.5px;font-weight:700;color:#8891a0;text-transform:uppercase;margin-top:8px;">HSE General Manager</label>
+      <input type="email" id="approverGm" placeholder="e.g. abubakar.alblaushi@altasnim.com" style="width:100%;padding:7px 9px;border-radius:6px;border:1px solid #dfe3e7;font-size:12.5px;margin-top:4px;">
+      <label style="display:block;font-size:10.5px;font-weight:700;color:#8891a0;text-transform:uppercase;margin-top:10px;">HSE Manager</label>
+      <input type="email" id="approverManager" placeholder="e.g. hse.manager@altasnim.com" style="width:100%;padding:7px 9px;border-radius:6px;border:1px solid #dfe3e7;font-size:12.5px;margin-top:4px;">
+      <label style="display:block;font-size:10.5px;font-weight:700;color:#8891a0;text-transform:uppercase;margin-top:10px;">HSE Lead</label>
+      <input type="email" id="approverLead" placeholder="e.g. hse.lead@altasnim.com" style="width:100%;padding:7px 9px;border-radius:6px;border:1px solid #dfe3e7;font-size:12.5px;margin-top:4px;">
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn btn-primary" onclick="saveApprovers()">Save Approvers</button>
+      </div>
+      <div id="approversStatus" style="margin-top:10px;font-size:12px;display:none;padding:8px 12px;border-radius:8px;"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Registration Dropdown Options</h2>
+      <div style="font-size:11.5px;color:#8891a0;margin-bottom:10px;">One value per line. Controls the Cluster/Role/Shift dropdowns on Team Registration, the HSE Team Directory filters, and the Transfer destination list.</div>
+
+      <label style="display:block;font-size:10.5px;font-weight:700;color:#8891a0;text-transform:uppercase;margin-top:8px;">Clusters</label>
+      <div style="font-size:10.5px;color:#c62828;margin:3px 0;">⚠ Editing this does NOT update which clusters require H2S certification, or which are exempt from the 2-year rotation rule - those live in the Office/Non-Field Clusters list below.</div>
+      <textarea id="ddClusters" rows="6" style="width:100%;padding:8px;border-radius:6px;border:1px solid #dfe3e7;font-size:12px;font-family:monospace;margin-top:4px;"></textarea>
+      <div class="btn-row" style="margin-top:6px;">
+        <button class="btn btn-ghost" onclick="resetDropdown('clusters')" style="font-size:11px;padding:5px 10px;">Reset to Default</button>
+      </div>
+
+      <label style="display:block;font-size:10.5px;font-weight:700;color:#8891a0;text-transform:uppercase;margin-top:16px;">Roles</label>
+      <textarea id="ddRoles" rows="6" style="width:100%;padding:8px;border-radius:6px;border:1px solid #dfe3e7;font-size:12px;font-family:monospace;margin-top:4px;"></textarea>
+      <div class="btn-row" style="margin-top:6px;">
+        <button class="btn btn-ghost" onclick="resetDropdown('roles')" style="font-size:11px;padding:5px 10px;">Reset to Default</button>
+      </div>
+
+      <label style="display:block;font-size:10.5px;font-weight:700;color:#8891a0;text-transform:uppercase;margin-top:16px;">Shifts</label>
+      <textarea id="ddShifts" rows="3" style="width:100%;padding:8px;border-radius:6px;border:1px solid #dfe3e7;font-size:12px;font-family:monospace;margin-top:4px;"></textarea>
+      <div class="btn-row" style="margin-top:6px;">
+        <button class="btn btn-ghost" onclick="resetDropdown('shifts')" style="font-size:11px;padding:5px 10px;">Reset to Default</button>
+      </div>
+
+      <label style="display:block;font-size:10.5px;font-weight:700;color:#8891a0;text-transform:uppercase;margin-top:16px;">Office / Non-Field Clusters</label>
+      <div style="font-size:10.5px;color:#8891a0;margin:3px 0;">Clusters listed here are automatically exempt from BOTH the H2S competency requirement and the 2-year rotation rule. Every other cluster automatically requires H2S - no separate mapping to maintain.</div>
+      <textarea id="ddOfficeClusters" rows="2" style="width:100%;padding:8px;border-radius:6px;border:1px solid #dfe3e7;font-size:12px;font-family:monospace;margin-top:4px;"></textarea>
+      <div class="btn-row" style="margin-top:6px;">
+        <button class="btn btn-ghost" onclick="resetDropdown('office_clusters')" style="font-size:11px;padding:5px 10px;">Reset to Default</button>
+      </div>
+
+      <div class="btn-row" style="margin-top:14px;">
+        <button class="btn btn-primary" onclick="saveDropdowns()">Save All Dropdown Options</button>
+      </div>
+      <div id="dropdownStatus" style="margin-top:10px;font-size:12px;display:none;padding:8px 12px;border-radius:8px;"></div>
+    </div>
+
+    <div class="panel">
+      <h2 style="color:#c62828;">Reset / Danger Zone</h2>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="reinstallTriggers()">Reinstall Time Triggers</button>
+        <button class="btn btn-ghost" onclick="sendTestEmail()">Send Test Email</button>
+        <button class="btn btn-ghost" onclick="fixPhotoPermissions()">Fix Photo Permissions (make viewable by everyone)</button>
+        <button class="btn btn-danger" onclick="removeSample()">Remove Sample/Template Data</button>
+        <button class="btn btn-danger" onclick="confirmClearLog()">Clear System Log</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+const BASE_URL = "https://script.google.com/macros/s/AKfycbyRmjlrHzO90v_jHfdfoDK6097Fr5r593xLtcjoOnl2s6ZIrpugy7_m_ezT3sxB_OYLwA/exec";
+
+function setGateStatus(id, msg, cls) {
+  const el = document.getElementById(id);
+  el.className = cls;
+  el.textContent = msg;
+}
+
+window.showForgot = function() {
+  document.getElementById('loginSection').style.display = 'none';
+  document.getElementById('forgotSection').style.display = 'block';
+};
+window.showLogin = function() {
+  document.getElementById('forgotSection').style.display = 'none';
+  document.getElementById('loginSection').style.display = 'block';
+};
+
+window.attemptLogin = function() {
+  const username = document.getElementById('gateUsername').value.trim();
+  const password = document.getElementById('gatePassword').value;
+  const btn = document.getElementById('gateLoginBtn');
+  btn.disabled = true; btn.textContent = 'Checking...';
+  fetch(BASE_URL + '?action=checkLogin&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password))
+    .then(function(res) { return res.json(); })
+    .then(function(result) {
+      btn.disabled = false; btn.textContent = 'Sign In';
+      if (!result.success) { setGateStatus('gateStatus', result.error, 'err'); return; }
+      sessionStorage.setItem('hsePalmsAuth', 'true');
+      document.getElementById('loginGate').style.display = 'none';
+      showAdminKeyGate();
+    })
+    .catch(function(err) {
+      btn.disabled = false; btn.textContent = 'Sign In';
+      setGateStatus('gateStatus', 'Login failed: ' + err.message, 'err');
+    });
+};
+
+window.attemptForgot = function() {
+  const email = document.getElementById('forgotEmail').value.trim();
+  const btn = document.getElementById('forgotBtn');
+  btn.disabled = true; btn.textContent = 'Sending...';
+  fetch(BASE_URL + '?action=forgotPassword&email=' + encodeURIComponent(email))
+    .then(function(res) { return res.json(); })
+    .then(function(result) {
+      btn.disabled = false; btn.textContent = 'Send Password';
+      setGateStatus('gateStatus2', result.success ? result.message : result.error, result.success ? 'ok' : 'err');
+    })
+    .catch(function(err) {
+      btn.disabled = false; btn.textContent = 'Send Password';
+      setGateStatus('gateStatus2', 'Failed: ' + err.message, 'err');
+    });
+};
+
+/* ---------------- ADMIN KEY GATE (second layer, specific to this page) ---------------- */
+function showAdminKeyGate() {
+  if (sessionStorage.getItem('hsePalmsAdminKey')) {
+    unlockAdminContent();
+    return;
+  }
+  document.getElementById('adminKeyGate').classList.add('show');
+}
+
+window.attemptAdminKey = function() {
+  const key = document.getElementById('adminKeyInput').value;
+  const btn = document.getElementById('adminKeyBtn');
+  const status = document.getElementById('adminKeyStatus');
+  btn.disabled = true; btn.textContent = 'Checking...';
+  status.className = '';
+  fetch(BASE_URL + '?action=adminActionGet&subAction=verifyAdminKey&adminKey=' + encodeURIComponent(key))
+    .then(function(res) { return res.json(); })
+    .then(function(result) {
+      btn.disabled = false; btn.textContent = 'Unlock Admin Control';
+      if (!result.valid) {
+        status.className = 'err';
+        status.textContent = 'Incorrect admin key.';
+        return;
+      }
+      sessionStorage.setItem('hsePalmsAdminKey', key);
+      document.getElementById('adminKeyGate').classList.remove('show');
+      unlockAdminContent();
+    })
+    .catch(function(err) {
+      btn.disabled = false; btn.textContent = 'Unlock Admin Control';
+      status.className = 'err';
+      status.textContent = 'Failed: ' + err.message;
+    });
+};
+
+function unlockAdminContent() {
+  document.getElementById('appContent').style.display = 'block';
+  runAll();
+  loadPortalPassword();
+  loadApprovers();
+  loadDropdownOptions();
+}
+
+// Skip the gate(s) if already authenticated this browser session
+document.addEventListener('DOMContentLoaded', function() {
+  if (sessionStorage.getItem('hsePalmsAuth') === 'true') {
+    document.getElementById('loginGate').style.display = 'none';
+    showAdminKeyGate();
+  }
+});
+
+/* ---------------- SERVER CALL HELPERS ---------------- */
+function getAdminKey_() { return sessionStorage.getItem('hsePalmsAdminKey') || ''; }
+
+function adminGet(subAction, extraParams) {
+  let url = BASE_URL + '?action=adminActionGet&subAction=' + subAction + '&adminKey=' + encodeURIComponent(getAdminKey_());
+  if (extraParams) Object.keys(extraParams).forEach(k => url += '&' + k + '=' + encodeURIComponent(extraParams[k]));
+  return fetch(url).then(function(res) { return res.json(); });
+}
+function adminPost(subAction, payload) {
+  return fetch(BASE_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'adminAction', subAction: subAction, adminKey: getAdminKey_(), payload: payload || {} })
+  }).then(function(res) { return res.json(); });
+}
+
+/* ---------------- ADMIN PANEL LOGIC ---------------- */
+function setActionStatus(msg, cls) {
+  const el = document.getElementById('actionStatus');
+  el.className = cls;
+  el.textContent = msg;
+  setTimeout(() => { el.className = ''; }, 5000);
+}
+
+function runAll() {
+  document.getElementById('overallBanner').className = 'loading';
+  document.getElementById('overallBanner').textContent = 'Running diagnostics...';
+  adminGet('diagnostics')
+    .then(renderDiagnostics)
+    .catch(function(err) {
+      document.getElementById('overallBanner').className = 'fail';
+      document.getElementById('overallBanner').textContent = 'Diagnostics failed to run: ' + err.message;
+    });
+  adminGet('systemLog', { n: 20 }).then(renderLog);
+}
+
+function renderDiagnostics(report) {
+  const banner = document.getElementById('overallBanner');
+  banner.className = report.overallStatus;
+  const icon = { pass: '✓', warn: '⚠', fail: '✕' }[report.overallStatus];
+  banner.textContent = icon + ' ' + (
+    report.overallStatus === 'pass' ? 'All checks passed' :
+    report.overallStatus === 'warn' ? report.warnCount + ' warning(s) - review below' :
+    report.failCount + ' failing check(s) - needs attention'
+  ) + '  ·  Generated ' + new Date(report.generatedAt).toLocaleTimeString();
+
+  const byCategory = {};
+  report.checks.forEach(c => { (byCategory[c.category] = byCategory[c.category] || []).push(c); });
+  let html = '';
+  Object.keys(byCategory).forEach(cat => {
+    html += '<div class="category-label">' + cat + '</div>';
+    byCategory[cat].forEach(c => {
+      html += '<div class="check-row"><span class="dot ' + c.status + '"></span><div><div class="check-name">' + c.name + '</div><div class="check-detail">' + c.detail + '</div></div></div>';
+    });
+  });
+  document.getElementById('checksHost').innerHTML = html;
+
+  const countGrid = document.getElementById('countGrid');
+  countGrid.innerHTML = Object.keys(report.counts).map(name => `
+    <div class="count-card">
+      <div class="num">${report.counts[name]}</div>
+      <div class="lbl">${name.replace('_',' ')}</div>
+    </div>
+  `).join('');
+
+  if (report.urls) {
+    const urlsHost = document.getElementById('urlsHost');
+    urlsHost.innerHTML = Object.keys(report.urls).map(key => `
+      <div class="url-row">
+        <span class="label">${key}</span>
+        <span class="val">${report.urls[key]}</span>
+        <button class="copy-btn" onclick="copyText('${report.urls[key]}', this)">Copy</button>
+      </div>
+    `).join('');
+  }
+}
+
+function renderLog(rows) {
+  const body = document.getElementById('logBody');
+  if (!rows || !rows.length) {
+    body.innerHTML = '<tr><td colspan="3" style="color:#8891a0;">No log entries yet.</td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map(r => `
+    <tr>
+      <td>${new Date(r.timestamp).toLocaleString()}</td>
+      <td><span class="event-tag ${(r.event || '').includes('ERROR') ? 'error' : ''}">${r.event || ''}</span></td>
+      <td>${r.details || ''}</td>
+    </tr>
+  `).join('');
+}
+
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  });
+}
+
+function clearCache() {
+  adminPost('clearCache').then(function(r) {
+    setActionStatus(r.success ? r.message : r.error, r.success ? 'ok' : 'err');
+  }).catch(function(err) { setActionStatus('Error: ' + err.message, 'err'); });
+}
+
+function reinstallTriggers() {
+  adminPost('reinstallTriggers').then(function(r) {
+    setActionStatus(r.success ? r.message : r.error, r.success ? 'ok' : 'err');
+    runAll();
+  }).catch(function(err) { setActionStatus('Error: ' + err.message, 'err'); });
+}
+
+function sendTestEmail() {
+  adminPost('sendTestEmail').then(function(r) {
+    setActionStatus(r.success ? r.message : r.error, r.success ? 'ok' : 'err');
+  }).catch(function(err) { setActionStatus('Error: ' + err.message, 'err'); });
+}
+
+function confirmClearLog() {
+  if (!confirm('Clear all System_Log entries? This cannot be undone.')) return;
+  adminPost('clearLog').then(function(r) {
+    setActionStatus(r.message, 'ok');
+    runAll();
+  }).catch(function(err) { setActionStatus('Error: ' + err.message, 'err'); });
+}
+
+function fixPhotoPermissions() {
+  adminPost('fixPhotos').then(function(r) {
+    setActionStatus(r.success ? r.message : r.error, r.success ? 'ok' : 'err');
+  }).catch(function(err) { setActionStatus('Error: ' + err.message, 'err'); });
+}
+
+function removeSample() {
+  if (!confirm('Remove the template/sample row (ATNM-0001 / Sample Name) from Personnel_Master? This only matches that exact row - no other data is touched.')) return;
+  adminPost('removeSample').then(function(r) {
+    setActionStatus(r.message, 'ok');
+    runAll();
+  }).catch(function(err) { setActionStatus('Error: ' + err.message, 'err'); });
+}
+
+function runRotationCheck() {
+  const el = document.getElementById('rotationStatus');
+  el.style.display = 'block';
+  el.style.background = '#eceff1';
+  el.textContent = 'Running...';
+  adminPost('runRotationCheck').then(function(r) {
+    el.style.background = r.success ? '#e8f5e9' : '#fdecea';
+    el.style.color = r.success ? '#2e7d32' : '#c62828';
+    el.textContent = r.success ? r.message : r.error;
+    runAll();
+  }).catch(function(err) {
+    el.style.background = '#fdecea'; el.style.color = '#c62828';
+    el.textContent = 'Error: ' + err.message;
+  });
+}
+
+function loadApprovers() {
+  adminGet('approvers').then(function(a) {
+    document.getElementById('approverGm').value = a.gm;
+    document.getElementById('approverManager').value = a.manager;
+    document.getElementById('approverLead').value = a.lead;
+    if (!a.gm || !a.manager || !a.lead) {
+      document.getElementById('approverGm').placeholder = 'Not set - falls back to ' + a.fallback;
+      document.getElementById('approverManager').placeholder = 'Not set - falls back to ' + a.fallback;
+      document.getElementById('approverLead').placeholder = 'Not set - falls back to ' + a.fallback;
+    }
+  });
+}
+
+function saveApprovers() {
+  const el = document.getElementById('approversStatus');
+  el.style.display = 'block';
+  el.style.background = '#eceff1';
+  el.textContent = 'Saving...';
+  const payload = {
+    gm: document.getElementById('approverGm').value,
+    manager: document.getElementById('approverManager').value,
+    lead: document.getElementById('approverLead').value
+  };
+  adminPost('saveApprovers', payload).then(function(r) {
+    el.style.background = r.success ? '#e8f5e9' : '#fdecea';
+    el.style.color = r.success ? '#2e7d32' : '#c62828';
+    el.textContent = r.success ? r.message : r.error;
+  }).catch(function(err) {
+    el.style.background = '#fdecea'; el.style.color = '#c62828';
+    el.textContent = 'Error: ' + err.message;
+  });
+}
+
+function loadDropdownOptions() {
+  adminGet('dropdownOptions').then(function(opts) {
+    document.getElementById('ddClusters').value = opts.clusters.join('\n');
+    document.getElementById('ddRoles').value = opts.roles.join('\n');
+    document.getElementById('ddShifts').value = opts.shifts.join('\n');
+    document.getElementById('ddOfficeClusters').value = opts.officeClusters.join('\n');
+  });
+}
+
+function saveDropdowns() {
+  const el = document.getElementById('dropdownStatus');
+  el.style.display = 'block';
+  el.style.background = '#eceff1';
+  el.textContent = 'Saving...';
+  const payload = {
+    clusters: document.getElementById('ddClusters').value,
+    roles: document.getElementById('ddRoles').value,
+    shifts: document.getElementById('ddShifts').value,
+    officeClusters: document.getElementById('ddOfficeClusters').value
+  };
+  adminPost('saveDropdowns', payload).then(function(r) {
+    el.style.background = r.success ? '#e8f5e9' : '#fdecea';
+    el.style.color = r.success ? '#2e7d32' : '#c62828';
+    el.textContent = r.success ? r.message : r.error;
+    loadDropdownOptions();
+  }).catch(function(err) {
+    el.style.background = '#fdecea'; el.style.color = '#c62828';
+    el.textContent = 'Error: ' + err.message;
+  });
+}
+
+function resetDropdown(which) {
+  if (!confirm('Reset ' + which + ' to the built-in default list?')) return;
+  adminPost('resetDropdown', { which: which }).then(function() { loadDropdownOptions(); });
+}
+
+function loadPortalPassword() {
+  adminGet('portalPassword').then(function(r) {
+    document.getElementById('portalUsernameLabel').textContent = r.username;
+    if (!r.authorized) {
+      document.getElementById('portalPassword').placeholder = 'Not authorized to view';
+      return;
+    }
+    document.getElementById('portalPassword').value = r.password;
+  });
+}
+
+function toggleShowPassword(inputId, btnId) {
+  const el = document.getElementById(inputId);
+  const btn = document.getElementById(btnId);
+  if (el.type === 'password') { el.type = 'text'; btn.textContent = 'Hide'; }
+  else { el.type = 'password'; btn.textContent = 'Show'; }
+}
+
+function savePortalPassword() {
+  const el = document.getElementById('portalPasswordStatus');
+  el.style.display = 'block';
+  el.style.background = '#eceff1';
+  el.textContent = 'Saving...';
+  const newPassword = document.getElementById('portalPassword').value;
+  adminPost('setPortalPassword', { newPassword: newPassword }).then(function(r) {
+    el.style.background = r.success ? '#e8f5e9' : '#fdecea';
+    el.style.color = r.success ? '#2e7d32' : '#c62828';
+    el.textContent = r.success ? r.message : r.error;
+  }).catch(function(err) {
+    el.style.background = '#fdecea'; el.style.color = '#c62828';
+    el.textContent = 'Error: ' + err.message;
+  });
+}
+
+function changeAdminKeyAction() {
+  const el = document.getElementById('adminKeyChangeStatus');
+  el.style.display = 'block';
+  el.style.background = '#eceff1';
+  el.textContent = 'Saving...';
+  const currentKey = document.getElementById('currentAdminKeyInput').value;
+  const newKey = document.getElementById('newAdminKeyInput').value;
+  adminPost('changeAdminKey', { currentKey: currentKey, newKey: newKey }).then(function(r) {
+    el.style.background = r.success ? '#e8f5e9' : '#fdecea';
+    el.style.color = r.success ? '#2e7d32' : '#c62828';
+    el.textContent = r.success ? r.message : r.error;
+    if (r.success) {
+      sessionStorage.setItem('hsePalmsAdminKey', newKey);
+      document.getElementById('currentAdminKeyInput').value = '';
+      document.getElementById('newAdminKeyInput').value = '';
+    }
+  }).catch(function(err) {
+    el.style.background = '#fdecea'; el.style.color = '#c62828';
+    el.textContent = 'Error: ' + err.message;
+  });
+}
+</script>
+</body>
+</html>
