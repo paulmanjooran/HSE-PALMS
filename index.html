@@ -1,31 +1,51 @@
 <!DOCTYPE html>
 <html>
 <head>
+<base target="_top">
 <meta charset="UTF-8">
-<title>HSE PALMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root { --dark: #4d555b; --blue: #21409a; --orange: #f58220; }
+  :root { color-scheme: light; --dark: #4d555b; --blue: #21409a; --orange: #f58220; }
   * { box-sizing: border-box; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f5f6; margin: 0; min-height: 100vh;
-         display: flex; align-items: center; justify-content: center; }
-  .card { background: #fff; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 440px; width: 90%; }
-  h1 { color: var(--dark); font-size: 22px; margin: 0 0 4px; }
-  .sub { color: #8891a0; font-size: 13px; margin-bottom: 28px; }
-  a.link-btn {
-    display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-radius: 10px; margin-bottom: 12px;
-    text-decoration: none; font-weight: 700; font-size: 14px; transition: transform .12s;
-  }
-  a.link-btn:hover { transform: translateY(-2px); }
-  a.link-btn.dashboard { background: rgba(33,64,154,0.08); color: var(--blue); }
-  a.link-btn.directory { background: rgba(245,130,32,0.08); color: var(--orange); }
-  .icon { font-size: 22px; }
-  footer { margin-top: 24px; font-size: 11px; color: #b0b6bd; text-align: center; }
-</style>
-</head>
-<body>
-<script>const BASE_URL = "https://script.google.com/macros/s/AKfycbyRmjlrHzO90v_jHfdfoDK6097Fr5r593xLtcjoOnl2s6ZIrpugy7_m_ezT3sxB_OYLwA/exec"; // <-- paste the URL from the NEW "Anyone" access deployment here</script>
+  html, body { margin: 0; height: 100%; font-family: 'Inter', sans-serif; }
+  body { display: flex; background: #e7ebef; }
 
-<style>
+  #sidebar {
+    width: 236px; flex-shrink: 0; background: linear-gradient(180deg, #3d444a, var(--dark));
+    color: #fff; display: flex; flex-direction: column; padding: 22px 0;
+  }
+  #sidebar .brand { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.12); margin-bottom: 14px; }
+  #sidebar .brand .title { font-family: 'Manrope'; font-weight: 800; font-size: 15.5px; line-height: 1.3; }
+  #sidebar .brand .sub { font-size: 10.5px; opacity: 0.6; margin-top: 4px; letter-spacing: .03em; text-transform: uppercase; }
+
+  .navitem {
+    display: flex; align-items: center; gap: 11px; padding: 12px 20px; cursor: pointer; font-size: 13.5px;
+    font-weight: 600; color: rgba(255,255,255,0.7); border-left: 3px solid transparent; transition: all .15s;
+  }
+  .navitem:hover { background: rgba(255,255,255,0.06); color: #fff; }
+  .navitem.active { background: rgba(255,255,255,0.1); color: #fff; border-left-color: var(--orange); }
+  .navitem .ic { font-size: 16px; width: 20px; text-align: center; }
+
+  .nav-group-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,0.35);
+    padding: 16px 20px 6px; font-weight: 700;
+  }
+
+  #sidebar .footer { margin-top: auto; padding: 14px 20px 0; font-size: 10.5px; color: rgba(255,255,255,0.35); border-top: 1px solid rgba(255,255,255,0.1); padding-top: 14px; }
+
+  #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #contentHeader {
+    padding: 14px 26px; background: #fff; border-bottom: 1px solid #e2e4e6; display: flex; align-items: center; justify-content: space-between;
+  }
+  #contentHeader h2 { font-family: 'Manrope'; font-size: 15px; margin: 0; color: var(--dark); }
+  #contentHeader .desc { font-size: 11.5px; color: #8891a0; margin-top: 2px; }
+  .refresh-btn { border: none; background: #f2f4f6; border-radius: 7px; padding: 7px 14px; font-family: 'Manrope'; font-weight: 700; font-size: 11.5px; cursor: pointer; color: var(--dark); }
+  .refresh-btn:hover { background: #e7ebef; }
+
+  #frameWrap { flex: 1; position: relative; }
+  iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
+
   #loginGate {
     position: fixed; inset: 0; background: linear-gradient(135deg, #4d555b, #21409a); z-index: 9999;
     display: flex; align-items: center; justify-content: center; font-family: 'Segoe UI', Arial, sans-serif;
@@ -45,6 +65,8 @@
   #loginGate #forgotSection { display: none; }
   #appContent { display: none; }
 </style>
+</head>
+<body>
 
 <div id="loginGate">
   <div class="box">
@@ -71,77 +93,132 @@
   </div>
 </div>
 
-<script>
-(function() {
-  function setGateStatus(id, msg, cls) {
-    const el = document.getElementById(id);
-    el.className = cls; el.textContent = msg;
-  }
-  window.showForgot = function() {
-    document.getElementById('loginSection').style.display = 'none';
-    document.getElementById('forgotSection').style.display = 'block';
-  };
-  window.showLogin = function() {
-    document.getElementById('forgotSection').style.display = 'none';
-    document.getElementById('loginSection').style.display = 'block';
-  };
-  window.attemptLogin = function() {
-    const username = document.getElementById('gateUsername').value.trim();
-    const password = document.getElementById('gatePassword').value;
-    const btn = document.getElementById('gateLoginBtn');
-    btn.disabled = true; btn.textContent = 'Checking...';
-    fetch(BASE_URL + '?action=checkLogin&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password))
-      .then(function(res) { return res.json(); })
-      .then(function(result) {
-        btn.disabled = false; btn.textContent = 'Sign In';
-        if (!result.success) { setGateStatus('gateStatus', result.error, 'err'); return; }
-        sessionStorage.setItem('hsePalmsAuth', 'true');
-        document.getElementById('loginGate').style.display = 'none';
-        document.getElementById('appContent').style.display = 'block';
-        if (typeof onGateUnlocked === 'function') onGateUnlocked();
-      })
-      .catch(function(err) {
-        btn.disabled = false; btn.textContent = 'Sign In';
-        setGateStatus('gateStatus', 'Login failed: ' + err.message, 'err');
-      });
-  };
-  window.attemptForgot = function() {
-    const email = document.getElementById('forgotEmail').value.trim();
-    const btn = document.getElementById('forgotBtn');
-    btn.disabled = true; btn.textContent = 'Sending...';
-    fetch(BASE_URL + '?action=forgotPassword&email=' + encodeURIComponent(email))
-      .then(function(res) { return res.json(); })
-      .then(function(result) {
-        btn.disabled = false; btn.textContent = 'Send Password';
-        setGateStatus('gateStatus2', result.success ? result.message : result.error, result.success ? 'ok' : 'err');
-      })
-      .catch(function(err) {
-        btn.disabled = false; btn.textContent = 'Send Password';
-        setGateStatus('gateStatus2', 'Failed: ' + err.message, 'err');
-      });
-  };
-  // Skip the gate if already authenticated this browser session.
-  // Deferred to DOMContentLoaded so onGateUnlocked (defined later in the page,
-  // after the main content script) is guaranteed to exist by the time we call it.
-  document.addEventListener('DOMContentLoaded', function() {
-    if (sessionStorage.getItem('hsePalmsAuth') === 'true') {
-      document.getElementById('loginGate').style.display = 'none';
-      document.getElementById('appContent').style.display = 'block';
-      if (typeof onGateUnlocked === 'function') onGateUnlocked();
-    }
-  });
-})();
-</script>
-
 <div id="appContent">
-  <div class="card">
-    <h1>HSE PALMS</h1>
-    <div class="sub">HSE Personnel Allocation &amp; Management System</div>
-    <a class="link-btn directory" href="directory.html">
-      <span class="icon">🗂️</span> HSE Team Directory — Smart Matrix, Team Tree &amp; Cluster Summary
-    </a>
-    <footer>Al Tasnim Enterprises LLC &middot; PDO ODC South &middot; C3100000177</footer>
+  <div id="sidebar">
+    <div class="brand">
+      <div class="title">HSE PALMS</div>
+      <div class="sub">Personnel Allocation &amp;<br>Management System</div>
+    </div>
+
+    <div class="nav-group-label">Overview</div>
+    <div class="navitem active" data-page="directory.html" data-title="HSE Team Directory" data-desc="Smart People Matrix, Connected Team Tree &amp; Cluster Summary">
+      <span class="ic">🗂️</span> HSE Team Directory
+    </div>
+
+    <div class="nav-group-label">Submit</div>
+    <div class="navitem" data-page="leave.html" data-title="Annual Leave Declaration" data-desc="Declare desired Annual leave month for coverage planning">
+      <span class="ic">🗓️</span> Leave Declaration
+    </div>
+    <div class="navitem" data-page="registration.html" data-title="Location &amp; Shift Register" data-desc="One-time team registration - cluster, shift, line manager, photo">
+      <span class="ic">🪪</span> Team Registration
+    </div>
+
+    <div class="nav-group-label">System</div>
+    <div class="navitem" data-page="admin.html" data-title="Admin Control" data-desc="Health checks, cache, URLs, logs &amp; reset tools">
+      <span class="ic">🛠️</span> Admin Control
+    </div>
+
+    <div class="footer">Al Tasnim Enterprises LLC<br>PDO ODC South &middot; C3100000177</div>
+  </div>
+
+  <div id="main">
+    <div id="contentHeader">
+      <div>
+        <h2 id="pageTitle">HSE Team Directory</h2>
+        <div class="desc" id="pageDesc">Smart People Matrix &amp; Connected Team Tree</div>
+      </div>
+      <button class="refresh-btn" onclick="refreshCurrent()">↻ Refresh</button>
+    </div>
+    <div id="frameWrap">
+      <iframe id="contentFrame" src=""></iframe>
+    </div>
   </div>
 </div>
+
+<script>
+const BASE_URL = "https://script.google.com/macros/s/AKfycbyRmjlrHzO90v_jHfdfoDK6097Fr5r593xLtcjoOnl2s6ZIrpugy7_m_ezT3sxB_OYLwA/exec";
+
+function setGateStatus(id, msg, cls) {
+  const el = document.getElementById(id);
+  el.className = cls;
+  el.textContent = msg;
+}
+
+window.showForgot = function() {
+  document.getElementById('loginSection').style.display = 'none';
+  document.getElementById('forgotSection').style.display = 'block';
+};
+window.showLogin = function() {
+  document.getElementById('forgotSection').style.display = 'none';
+  document.getElementById('loginSection').style.display = 'block';
+};
+
+window.attemptLogin = function() {
+  const username = document.getElementById('gateUsername').value.trim();
+  const password = document.getElementById('gatePassword').value;
+  const btn = document.getElementById('gateLoginBtn');
+  btn.disabled = true; btn.textContent = 'Checking...';
+  fetch(BASE_URL + '?action=checkLogin&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password))
+    .then(function(res) { return res.json(); })
+    .then(function(result) {
+      btn.disabled = false; btn.textContent = 'Sign In';
+      if (!result.success) { setGateStatus('gateStatus', result.error, 'err'); return; }
+      sessionStorage.setItem('hsePalmsAuth', 'true');
+      document.getElementById('loginGate').style.display = 'none';
+      unlockPortal();
+    })
+    .catch(function(err) {
+      btn.disabled = false; btn.textContent = 'Sign In';
+      setGateStatus('gateStatus', 'Login failed: ' + err.message, 'err');
+    });
+};
+
+window.attemptForgot = function() {
+  const email = document.getElementById('forgotEmail').value.trim();
+  const btn = document.getElementById('forgotBtn');
+  btn.disabled = true; btn.textContent = 'Sending...';
+  fetch(BASE_URL + '?action=forgotPassword&email=' + encodeURIComponent(email))
+    .then(function(res) { return res.json(); })
+    .then(function(result) {
+      btn.disabled = false; btn.textContent = 'Send Password';
+      setGateStatus('gateStatus2', result.success ? result.message : result.error, result.success ? 'ok' : 'err');
+    })
+    .catch(function(err) {
+      btn.disabled = false; btn.textContent = 'Send Password';
+      setGateStatus('gateStatus2', 'Failed: ' + err.message, 'err');
+    });
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+  if (sessionStorage.getItem('hsePalmsAuth') === 'true') {
+    document.getElementById('loginGate').style.display = 'none';
+    unlockPortal();
+  }
+});
+
+/* ---------------- SIDEBAR SHELL - loads sibling GitHub pages into the iframe ---------------- */
+let currentPage = 'directory.html';
+
+function unlockPortal() {
+  document.getElementById('appContent').style.display = 'flex';
+  navigate('directory.html', 'HSE Team Directory', 'Smart People Matrix &amp; Connected Team Tree');
+}
+
+function navigate(page, title, desc) {
+  currentPage = page;
+  document.getElementById('contentFrame').src = page;
+  document.getElementById('pageTitle').innerHTML = title;
+  document.getElementById('pageDesc').innerHTML = desc;
+  document.querySelectorAll('.navitem').forEach(n => n.classList.toggle('active', n.dataset.page === page));
+}
+
+function refreshCurrent() {
+  document.getElementById('contentFrame').src = currentPage + '?_r=' + Date.now();
+}
+
+document.querySelectorAll('.navitem').forEach(item => {
+  item.addEventListener('click', () => navigate(item.dataset.page, item.dataset.title, item.dataset.desc));
+});
+</script>
 </body>
 </html>
