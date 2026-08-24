@@ -100,6 +100,11 @@
     position: absolute; top: -8px; right: -8px; background: var(--dark); color: #fff; font-size: 10px; font-weight: 700;
     border-radius: 10px; padding: 2px 7px; box-shadow: 0 2px 6px rgba(0,0,0,0.25);
   }
+  .manager-badge {
+    display: inline-flex; align-items: center; gap: 3px; font-size: 9px; font-weight: 700; color: #2e7d32;
+    background: rgba(46,125,50,0.12); padding: 2px 7px; border-radius: 8px; margin-top: 4px;
+  }
+  .manager-badge-inline { font-size: 12px; margin-left: 4px; }
 
   /* ---------- matrix ---------- */
   #matrixWrap { display: none; }
@@ -244,7 +249,7 @@
   <div class="box">
     <div id="loginSection">
       <h2>HSE PALMS</h2>
-      <div class="sub">Sign in with your @altasnim.com email</div>
+      <div class="sub">Sign in to continue</div>
       <label>Username</label>
       <input type="text" id="gateUsername" value="ATNM HSE" disabled style="background:#f2f4f6;color:#8891a0;">
       <label>Password</label>
@@ -480,11 +485,14 @@ function setView(v) {
   render();
 }
 
+let MANAGER_IDS = new Set();
+
 function loadData() {
   fetch(BASE_URL + '?action=api')
     .then(function(res) { return res.json(); })
     .then(function(data) {
       RAW = data;
+      MANAGER_IDS = new Set(RAW.personnel.map(p => p.reportsTo).filter(Boolean));
       document.getElementById('loadingMsg').style.display = 'none';
       buildFilterOptions();
       render();
@@ -555,6 +563,7 @@ function renderSummary() {
           <div class="summary-name-cell">
             <img src="${p.photoUrl || placeholderImg()}" onerror="this.src='${placeholderImg()}'">
             <span>${p.name || ''}</span>
+            ${MANAGER_IDS.has(p.employeeId) ? '<span class="manager-badge-inline" title="Has direct reports">🌳</span>' : ''}
           </div>
         </td>
         <td>${p.role || '—'}</td>
@@ -646,6 +655,7 @@ function buildNodeEl(n, filteredIds) {
     '<img src="' + (photo || placeholderImg()) + '" onerror="this.src=\'' + placeholderImg() + '\'">' +
     '<div class="name">' + (n.Name || '') + '</div>' +
     '<div class="role">' + (n.Role || '') + '</div>' +
+    ((n.children && n.children.length) ? '<div class="manager-badge">🌳 ' + n.children.length + ' report' + (n.children.length > 1 ? 's' : '') + '</div>' : '') +
     '<div class="tags">' +
       '<span class="tag" style="background:' + clusterColor + '">' + (n.Cluster || '').replace('ODC-','') + '</span>' +
       (n.ShiftType ? '<span class="tag" style="background:#8891a0">' + n.ShiftType + '</span>' : '') +
@@ -741,7 +751,8 @@ function renderMatrix() {
 
 function avatarChipHtml(p) {
   const photo = p.photoUrl || placeholderImg();
-  return '<span class="avatar-chip" data-empid="' + p.employeeId + '"><img src="' + photo + '" onerror="this.src=\'' + placeholderImg() + '\'"><span>' + (p.name || '') + '</span></span>';
+  const managerIcon = MANAGER_IDS.has(p.employeeId) ? '<span class="manager-badge-inline" title="Has direct reports">🌳</span>' : '';
+  return '<span class="avatar-chip" data-empid="' + p.employeeId + '"><img src="' + photo + '" onerror="this.src=\'' + placeholderImg() + '\'"><span>' + (p.name || '') + '</span>' + managerIcon + '</span>';
 }
 
 function personnelToNodeShape(p) {
