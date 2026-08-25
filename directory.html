@@ -246,116 +246,8 @@
     .node { width: 118px; }
   }
 </style>
-<style>
-  #loginGate {
-    position: fixed; inset: 0; background: linear-gradient(135deg, #4d555b, #21409a); z-index: 9999;
-    display: flex; align-items: center; justify-content: center; font-family: 'Segoe UI', Arial, sans-serif;
-  }
-  #loginGate .box { background: #fff; border-radius: 16px; padding: 36px; max-width: 380px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
-  #loginGate h2 { margin: 0 0 4px; color: #4d555b; font-size: 19px; }
-  #loginGate .sub { color: #8891a0; font-size: 12.5px; margin-bottom: 22px; }
-  #loginGate label { display: block; font-size: 11.5px; font-weight: 700; color: #8891a0; text-transform: uppercase; margin-top: 14px; margin-bottom: 4px; }
-  #loginGate input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
-  #loginGate button.primary { width: 100%; margin-top: 20px; padding: 12px; background: #21409a; color: #fff; border: none;
-    border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
-  #loginGate button.primary:disabled { background: #aaa; cursor: not-allowed; }
-  #loginGate .forgot-link { text-align: center; margin-top: 14px; font-size: 12.5px; color: #21409a; cursor: pointer; text-decoration: underline; }
-  #loginGate #gateStatus { margin-top: 14px; font-size: 12.5px; padding: 9px 12px; border-radius: 7px; display: none; }
-  #loginGate #gateStatus.err { display: block; background: #fdecea; color: #c62828; }
-  #loginGate #gateStatus.ok { display: block; background: #e8f5e9; color: #2e7d32; }
-  #loginGate #forgotSection { display: none; }
-  #appContent { display: none; }
-</style>
 </head>
 <body>
-<div id="loginGate">
-  <div class="box">
-    <div id="loginSection">
-      <h2>HSE PALMS</h2>
-      <div class="sub">Sign in to continue</div>
-      <label>Username</label>
-      <input type="text" id="gateUsername" value="ATNM HSE" disabled style="background:#f2f4f6;color:#8891a0;">
-      <label>Password</label>
-      <input type="password" id="gatePassword">
-      <button class="primary" id="gateLoginBtn" onclick="attemptLogin()">Sign In</button>
-      <div class="forgot-link" onclick="showForgot()">Forgot password?</div>
-      <div id="gateStatus"></div>
-    </div>
-    <div id="forgotSection">
-      <h2>Forgot Password</h2>
-      <div class="sub">Enter your @altasnim.com email - the password will be sent to you.</div>
-      <label>Email</label>
-      <input type="email" id="forgotEmail" placeholder="yourname@altasnim.com">
-      <button class="primary" id="forgotBtn" onclick="attemptForgot()">Send Password</button>
-      <div class="forgot-link" onclick="showLogin()">Back to sign in</div>
-      <div id="gateStatus2"></div>
-    </div>
-  </div>
-</div>
-
-<script>
-(function() {
-  function setGateStatus(id, msg, cls) {
-    const el = document.getElementById(id);
-    el.className = cls; el.textContent = msg;
-  }
-  window.showForgot = function() {
-    document.getElementById('loginSection').style.display = 'none';
-    document.getElementById('forgotSection').style.display = 'block';
-  };
-  window.showLogin = function() {
-    document.getElementById('forgotSection').style.display = 'none';
-    document.getElementById('loginSection').style.display = 'block';
-  };
-  window.attemptLogin = function() {
-    const username = document.getElementById('gateUsername').value.trim();
-    const password = document.getElementById('gatePassword').value;
-    const btn = document.getElementById('gateLoginBtn');
-    btn.disabled = true; btn.textContent = 'Checking...';
-    fetch(BASE_URL + '?action=checkLogin&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password))
-      .then(function(res) { return res.json(); })
-      .then(function(result) {
-        btn.disabled = false; btn.textContent = 'Sign In';
-        if (!result.success) { setGateStatus('gateStatus', result.error, 'err'); return; }
-        sessionStorage.setItem('hsePalmsAuth', 'true');
-        document.getElementById('loginGate').style.display = 'none';
-        document.getElementById('appContent').style.display = 'block';
-        if (typeof onGateUnlocked === 'function') onGateUnlocked();
-      })
-      .catch(function(err) {
-        btn.disabled = false; btn.textContent = 'Sign In';
-        setGateStatus('gateStatus', 'Login failed: ' + err.message, 'err');
-      });
-  };
-  window.attemptForgot = function() {
-    const email = document.getElementById('forgotEmail').value.trim();
-    const btn = document.getElementById('forgotBtn');
-    btn.disabled = true; btn.textContent = 'Sending...';
-    fetch(BASE_URL + '?action=forgotPassword&email=' + encodeURIComponent(email))
-      .then(function(res) { return res.json(); })
-      .then(function(result) {
-        btn.disabled = false; btn.textContent = 'Send Password';
-        setGateStatus('gateStatus2', result.success ? result.message : result.error, result.success ? 'ok' : 'err');
-      })
-      .catch(function(err) {
-        btn.disabled = false; btn.textContent = 'Send Password';
-        setGateStatus('gateStatus2', 'Failed: ' + err.message, 'err');
-      });
-  };
-  // Skip the gate if already authenticated this browser session.
-  // Deferred to DOMContentLoaded so onGateUnlocked (defined later in the page,
-  // after the main content script) is guaranteed to exist by the time we call it.
-  document.addEventListener('DOMContentLoaded', function() {
-    if (sessionStorage.getItem('hsePalmsAuth') === 'true') {
-      document.getElementById('loginGate').style.display = 'none';
-      document.getElementById('appContent').style.display = 'block';
-      if (typeof onGateUnlocked === 'function') onGateUnlocked();
-    }
-  });
-})();
-</script>
-
-<div id="appContent">
 
 <div id="topbar">
   <div>
@@ -492,10 +384,11 @@
 </div>
 
 <script>
-const BASE_URL = "https://script.google.com/macros/s/AKfycbyRmjlrHzO90v_jHfdfoDK6097Fr5r593xLtcjoOnl2s6ZIrpugy7_m_ezT3sxB_OYLwA/exec";
+const BASE_URL = "<?= baseUrl ?>";
 let RAW = { personnel: [], organogram: [], leave: [] };
 let currentView = 'tree';
 let focusId = null; // employeeId currently drilled into, null = root view
+let solidContextConnections = []; // [managerId, rootId] pairs needing a solid line even though the manager is only a context node, not a rendered ancestor
 let activeClusters = new Set();
 
 function setView(v) {
@@ -702,6 +595,7 @@ function renderTree() {
   // them as a small reference row above the focused root so the indirect
   // reporting line stays visible even zoomed in.
   let contextNodeIds = new Set();
+  solidContextConnections = [];
   if (focusId) {
     const subtreeNodes = flattenTree_(roots);
     const hasClusterLead = subtreeNodes.some(n => n.Role === 'HSE Cluster Lead');
@@ -715,6 +609,20 @@ function renderTree() {
       if (contextNodes.length) {
         levels.unshift(contextNodes);
         contextNodeIds = new Set(contextNodes.map(n => n.EmployeeID));
+      }
+    }
+
+    // A Cluster Lead's actual direct manager (HSE GM/HSE Manager) is normally
+    // cut off too, since drilling in only shows the focused person's own
+    // descendants, not their ancestors. Show them the same dimmed way as the
+    // indirect context nodes above - but connect with a SOLID line, since this
+    // is their real reporting relationship, not an indirect one.
+    if (hasClusterLead && roots.length === 1) {
+      const manager = findNode(RAW.organogram, roots[0].ReportsToID);
+      if (manager && !flattenTree_(roots).some(n => n.EmployeeID === manager.EmployeeID)) {
+        levels.unshift([manager]);
+        contextNodeIds.add(manager.EmployeeID);
+        solidContextConnections.push([manager.EmployeeID, roots[0].EmployeeID]);
       }
     }
 
@@ -851,6 +759,7 @@ function drawConnectors() {
   }
   walk(focusId ? [findNode(RAW.organogram, focusId)].filter(Boolean) : RAW.organogram);
 
+  solidContextConnections.forEach(([managerId, rootId]) => connect(managerId, rootId, 'solid'));
   drawIndirectConnectors_(connect);
 }
 
@@ -1297,9 +1206,6 @@ function downloadA3() {
 }
 
 loadData();
-
-window.onGateUnlocked = loadData;
 </script>
-</div>
 </body>
 </html>
