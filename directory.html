@@ -69,6 +69,11 @@
     background: rgba(255,255,255,0.7); width: 190px; font-family: 'Inter';
   }
   #searchBox:focus { outline: 2px solid var(--blue); outline-offset: 1px; }
+  #resetFiltersBtn {
+    padding: 6px 13px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer;
+    background: rgba(198,40,40,0.08); border: 1px solid rgba(198,40,40,0.2); color: #c62828; margin-left: auto;
+  }
+  #resetFiltersBtn:hover { background: rgba(198,40,40,0.15); }
   #breadcrumb { padding: 8px 24px; font-size: 12.5px; color: #8891a0; display: none; align-items: center; gap: 6px; }
   #breadcrumb.show { display: flex; }
   #breadcrumb a { color: var(--blue); cursor: pointer; font-weight: 600; text-decoration: none; }
@@ -79,6 +84,13 @@
   #treeCanvas { position: relative; overflow-x: auto; padding-bottom: 40px; }
   svg#connectors { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
   .tree-level { display: flex; justify-content: center; gap: 36px; margin-bottom: 64px; position: relative; z-index: 2; flex-wrap: wrap; }
+  .tree-level.context-level { margin-bottom: 34px; }
+  .context-level-label {
+    position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: 700;
+    color: #8891a0; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap;
+  }
+  .node.context-node { opacity: 0.6; border: 1px dashed #8891a0; }
+  .node.context-node:hover { opacity: 1; }
   .tree-branch { display: flex; flex-direction: column; align-items: center; }
 
   .node {
@@ -375,6 +387,7 @@
     <option>Shift A</option><option>Shift B</option><option>General</option>
   </select>
   <input id="searchBox" placeholder="Search name or ID..." oninput="applyFilters()">
+  <button id="resetFiltersBtn" onclick="resetAllFilters()" title="Clear cluster, role, shift, and search filters">↺ Reset Filters</button>
 </div>
 
 <div id="breadcrumb"><span>Focused on:</span> <a onclick="resetFocus()">All Teams</a> <span id="crumbTrail"></span></div>
@@ -555,6 +568,15 @@ function matchesFilters(p) {
 
 function applyFilters() { render(); }
 
+function resetAllFilters() {
+  activeClusters.clear();
+  document.querySelectorAll('#clusterChips .chip').forEach(chip => chip.classList.remove('active'));
+  document.getElementById('roleFilter').value = '';
+  document.getElementById('shiftFilter').value = '';
+  document.getElementById('searchBox').value = '';
+  render();
+}
+
 function getFilteredIds() {
   return new Set(RAW.personnel.filter(matchesFilters).map(p => p.employeeId));
 }
@@ -673,11 +695,42 @@ function renderTree() {
   }
   walk(roots, 0);
 
+  // When drilled into a Cluster Lead's or Industrial Hygenist's own subtree,
+  // their dotted-line "indirect manager" (HSE Lead ODC / Site Leads) usually
+  // isn't a literal descendant, so it wouldn't normally be rendered at all -
+  // and with nothing to connect to, the dotted line has nowhere to go. Add
+  // them as a small reference row above the focused root so the indirect
+  // reporting line stays visible even zoomed in.
+  let contextNodeIds = new Set();
+  if (focusId) {
+    const subtreeNodes = flattenTree_(roots);
+    const hasClusterLead = subtreeNodes.some(n => n.Role === 'HSE Cluster Lead');
+    const hasIndustrialHygenist = subtreeNodes.some(n => n.Role === 'Industrial Hygenist');
+    if (hasClusterLead || hasIndustrialHygenist) {
+      const allNodes = flattenTree_(RAW.organogram);
+      const alreadyVisibleIds = new Set(subtreeNodes.map(n => n.EmployeeID));
+      const contextNodes = allNodes.filter(n =>
+        (n.Role === 'HSE Lead ODC' || (hasClusterLead && n.Role === 'HSE Site Lead')) && !alreadyVisibleIds.has(n.EmployeeID)
+      );
+      if (contextNodes.length) {
+        levels.unshift(contextNodes);
+        contextNodeIds = new Set(contextNodes.map(n => n.EmployeeID));
+      }
+    }
+  }
+
   levels.forEach((levelNodes, depth) => {
     const levelDiv = document.createElement('div');
     levelDiv.className = 'tree-level';
     levelDiv.dataset.depth = depth;
-    levelNodes.forEach(n => levelDiv.appendChild(buildNodeEl(n, filteredIds)));
+    if (contextNodeIds.size && levelNodes.every(n => contextNodeIds.has(n.EmployeeID))) {
+      levelDiv.classList.add('context-level');
+      const label = document.createElement('div');
+      label.className = 'context-level-label';
+      label.textContent = 'Indirect reporting line (dotted)';
+      levelDiv.appendChild(label);
+    }
+    levelNodes.forEach(n => levelDiv.appendChild(buildNodeEl(n, filteredIds, contextNodeIds.has(n.EmployeeID))));
     levelsHost.appendChild(levelDiv);
   });
 
@@ -694,13 +747,14 @@ function findNode(nodes, id) {
   return null;
 }
 
-function buildNodeEl(n, filteredIds) {
+function buildNodeEl(n, filteredIds, isContext) {
   const branch = document.createElement('div');
   branch.className = 'tree-branch';
   branch.id = 'branch-' + n.EmployeeID;
 
   const el = document.createElement('div');
   el.className = 'node';
+  if (isContext) el.classList.add('context-node');
   if (filteredIds.size && !filteredIds.has(n.EmployeeID)) el.classList.add('dimmed');
   if (n.TransferStatus === 'Pending Transfer') el.classList.add('pending');
   if (n.RotationStatus === 'overdue') el.classList.add('rotation-overdue');
@@ -802,6 +856,7 @@ function drawIndirectConnectors_(connect) {
   const clusterLeads = all.filter(n => n.Role === 'HSE Cluster Lead');
   const hseLeadOdc = all.find(n => n.Role === 'HSE Lead ODC');
   const siteLeads = all.filter(n => n.Role === 'HSE Site Lead');
+  const industrialHygenists = all.filter(n => n.Role === 'Industrial Hygenist');
 
   clusterLeads.forEach(lead => {
     if (hseLeadOdc && hseLeadOdc.EmployeeID !== lead.ReportsToID) {
@@ -812,6 +867,14 @@ function drawIndirectConnectors_(connect) {
         connect(site.EmployeeID, lead.EmployeeID, 'dotted');
       }
     });
+  });
+
+  // Industrial Hygenist reports indirectly (dotted) to HSE Lead ODC, who sits
+  // above both Cluster HSE Leads and Site HSE Leads in this indirect hierarchy.
+  industrialHygenists.forEach(hyg => {
+    if (hseLeadOdc && hseLeadOdc.EmployeeID !== hyg.ReportsToID) {
+      connect(hseLeadOdc.EmployeeID, hyg.EmployeeID, 'dotted');
+    }
   });
 }
 
@@ -1125,7 +1188,7 @@ function colorForCluster(c) { return CLUSTER_COLORS[c] || '#8891a0'; }
 /* ---------------- SCREENSHOT + PDF ---------------- */
 function screenshotEl(elId, filename) {
   const el = document.getElementById(elId);
-  html2canvas(el, { backgroundColor: '#eef1f4', scale: 2 }).then(canvas => {
+  html2canvas(el, { backgroundColor: '#eef1f4', scale: 2, useCORS: true, allowTaint: false }).then(canvas => {
     const link = document.createElement('a');
     link.download = filename + '-' + Date.now() + '.png';
     link.href = canvas.toDataURL('image/png');
@@ -1139,7 +1202,7 @@ function downloadA3() {
   setView('tree');
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      html2canvas(document.getElementById('treeCanvas'), { backgroundColor: '#eef1f4', scale: 2 }).then(canvas => {
+      html2canvas(document.getElementById('treeCanvas'), { backgroundColor: '#eef1f4', scale: 2, useCORS: true, allowTaint: false }).then(canvas => {
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('l', 'mm', 'a3'); // 420 x 297 mm
         const pageW = 420, pageH = 297, margin = 12;
