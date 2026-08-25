@@ -1186,13 +1186,50 @@ const CLUSTER_COLORS = { 'ODC-Amal':'#21409a','ODC-Greater Birba':'#f58220','ODC
 function colorForCluster(c) { return CLUSTER_COLORS[c] || '#8891a0'; }
 
 /* ---------------- SCREENSHOT + PDF ---------------- */
+// Swaps every Drive-hosted <img> inside the container to an embedded base64
+// data URI (fetched server-side, no CORS issue) so html2canvas can actually
+// capture them, then restores the original lightweight Drive URLs afterward.
+// Returns a function that undoes the swap - always call it when done, even on error.
+const _photoBase64Cache = {};
+function embedPhotosForExport_(container) {
+  const imgs = Array.from(container.querySelectorAll('img[src*="drive.google.com/thumbnail"]'));
+  const restores = [];
+
+  const fetches = imgs.map(img => {
+    const match = img.src.match(/[?&]id=([^&]+)/);
+    if (!match) return Promise.resolve();
+    const fileId = decodeURIComponent(match[1]);
+    const originalSrc = img.src;
+    restores.push(() => { img.src = originalSrc; });
+
+    if (_photoBase64Cache[fileId]) {
+      img.src = _photoBase64Cache[fileId];
+      return Promise.resolve();
+    }
+    return fetch(BASE_URL + '?action=photoBase64&id=' + encodeURIComponent(fileId))
+      .then(res => res.json())
+      .then(result => {
+        if (result.success) {
+          _photoBase64Cache[fileId] = result.dataUri;
+          img.src = result.dataUri;
+        }
+      })
+      .catch(() => { /* leave original src - that photo just won't render in the export */ });
+  });
+
+  return Promise.all(fetches).then(() => function restoreAll() { restores.forEach(fn => fn()); });
+}
+
 function screenshotEl(elId, filename) {
   const el = document.getElementById(elId);
-  html2canvas(el, { backgroundColor: '#eef1f4', scale: 2, useCORS: true, allowTaint: false }).then(canvas => {
-    const link = document.createElement('a');
-    link.download = filename + '-' + Date.now() + '.png';
-    link.href = canvas.toDataURL('image/png');
-    link.click();
+  embedPhotosForExport_(el).then(restore => {
+    html2canvas(el, { backgroundColor: '#eef1f4', scale: 2, useCORS: true, allowTaint: false }).then(canvas => {
+      restore();
+      const link = document.createElement('a');
+      link.download = filename + '-' + Date.now() + '.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }).catch(() => restore());
   });
 }
 
@@ -1202,33 +1239,37 @@ function downloadA3() {
   setView('tree');
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      html2canvas(document.getElementById('treeCanvas'), { backgroundColor: '#eef1f4', scale: 2, useCORS: true, allowTaint: false }).then(canvas => {
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('l', 'mm', 'a3'); // 420 x 297 mm
-        const pageW = 420, pageH = 297, margin = 12;
-        pdf.setFillColor(77, 85, 91);
-        pdf.rect(0, 0, pageW, 18, 'F');
-        pdf.setTextColor(255, 255, 255);
-        pdf.setFontSize(14);
-        pdf.text('HSE PALMS — HSE Team Directory', margin, 12);
-        pdf.setFontSize(9);
-        pdf.text('Generated: ' + new Date().toLocaleString(), pageW - margin, 12, { align: 'right' });
+      const treeEl = document.getElementById('treeCanvas');
+      embedPhotosForExport_(treeEl).then(restore => {
+        html2canvas(treeEl, { backgroundColor: '#eef1f4', scale: 2, useCORS: true, allowTaint: false }).then(canvas => {
+          restore();
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF('l', 'mm', 'a3'); // 420 x 297 mm
+          const pageW = 420, pageH = 297, margin = 12;
+          pdf.setFillColor(77, 85, 91);
+          pdf.rect(0, 0, pageW, 18, 'F');
+          pdf.setTextColor(255, 255, 255);
+          pdf.setFontSize(14);
+          pdf.text('HSE PALMS — HSE Team Directory', margin, 12);
+          pdf.setFontSize(9);
+          pdf.text('Generated: ' + new Date().toLocaleString(), pageW - margin, 12, { align: 'right' });
 
-        const imgW = pageW - margin * 2;
-        const imgH = canvas.height * imgW / canvas.width;
-        const imgData = canvas.toDataURL('image/png');
-        let y = 24;
-        if (imgH > pageH - 30) {
-          pdf.addImage(imgData, 'PNG', margin, y, imgW, pageH - 30);
-        } else {
-          pdf.addImage(imgData, 'PNG', margin, y, imgW, imgH);
-        }
-        pdf.setTextColor(140, 145, 150);
-        pdf.setFontSize(8);
-        pdf.text('HSE PALMS — Unrestricted internal use', margin, pageH - 6);
-        pdf.save('ATNM-HSE-PAMS-Organogram-A3-' + Date.now() + '.pdf');
-        focusId = savedFocus;
-        render();
+          const imgW = pageW - margin * 2;
+          const imgH = canvas.height * imgW / canvas.width;
+          const imgData = canvas.toDataURL('image/png');
+          let y = 24;
+          if (imgH > pageH - 30) {
+            pdf.addImage(imgData, 'PNG', margin, y, imgW, pageH - 30);
+          } else {
+            pdf.addImage(imgData, 'PNG', margin, y, imgW, imgH);
+          }
+          pdf.setTextColor(140, 145, 150);
+          pdf.setFontSize(8);
+          pdf.text('HSE PALMS — Unrestricted internal use', margin, pageH - 6);
+          pdf.save('ATNM-HSE-PAMS-Organogram-A3-' + Date.now() + '.pdf');
+          focusId = savedFocus;
+          render();
+        }).catch(() => restore());
       });
     });
   });
