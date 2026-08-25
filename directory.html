@@ -102,9 +102,15 @@
   }
   .manager-badge {
     display: inline-flex; align-items: center; gap: 3px; font-size: 9px; font-weight: 700; color: #2e7d32;
-    background: rgba(46,125,50,0.12); padding: 2px 7px; border-radius: 8px; margin-top: 4px;
+    background: rgba(46,125,50,0.12); padding: 2px 7px; border-radius: 8px; margin-top: 4px; cursor: pointer;
   }
+  .manager-badge:hover { background: rgba(46,125,50,0.22); }
   .manager-badge-inline { font-size: 12px; margin-left: 4px; }
+  .eye-btn {
+    position: absolute; top: 6px; left: 6px; border: none; background: rgba(255,255,255,0.85); width: 22px; height: 22px;
+    border-radius: 50%; font-size: 11px; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.15); z-index: 2;
+  }
+  .eye-btn:hover { background: #fff; transform: scale(1.08); }
 
   /* ---------- matrix ---------- */
   #matrixWrap { display: none; }
@@ -157,6 +163,11 @@
   .avatar-chip:hover { transform: scale(1.06); }
   .avatar-chip img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; background: #dfe3e7; }
   .avatar-chip span { font-size: 10.5px; font-weight: 600; }
+  .eye-btn-inline {
+    border: none; background: transparent; font-size: 10px; cursor: pointer; padding: 0 2px; line-height: 1;
+    opacity: 0.55; flex-shrink: 0;
+  }
+  .eye-btn-inline:hover { opacity: 1; }
 
   /* ---------- popup ---------- */
   #overlay { position: fixed; inset: 0; background: rgba(20,25,35,0.35); backdrop-filter: blur(3px); z-index: 90; display: none; }
@@ -469,7 +480,7 @@
 
 <script>
 const BASE_URL = "https://script.google.com/macros/s/AKfycbyRmjlrHzO90v_jHfdfoDK6097Fr5r593xLtcjoOnl2s6ZIrpugy7_m_ezT3sxB_OYLwA/exec";
-let RAW = { personnel: [], organogram: [] };
+let RAW = { personnel: [], organogram: [], leave: [] };
 let currentView = 'tree';
 let focusId = null; // employeeId currently drilled into, null = root view
 let activeClusters = new Set();
@@ -486,6 +497,17 @@ function setView(v) {
 }
 
 let MANAGER_IDS = new Set();
+
+// Keeps the Team Tree connector lines correctly positioned whenever the
+// container resizes (window resize, embed/iframe resize, sidebar collapse) -
+// without this, lines only update on the next full render.
+let _resizeTimer = null;
+window.addEventListener('resize', function() {
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(function() {
+    if (currentView === 'tree') drawConnectors();
+  }, 150);
+});
 
 function loadData() {
   fetch(BASE_URL + '?action=api')
@@ -540,6 +562,7 @@ function getFilteredIds() {
 function render() {
   if (!RAW.personnel.length) { document.getElementById('emptyMsg').style.display = 'block'; return; }
   document.getElementById('emptyMsg').style.display = 'none';
+  updateBreadcrumb();
   if (currentView === 'tree') renderTree();
   else if (currentView === 'matrix') renderMatrix();
   else renderSummary();
@@ -561,15 +584,17 @@ function renderSummary() {
       <tr data-empid="${p.employeeId}">
         <td>
           <div class="summary-name-cell">
+            <button class="eye-btn-inline" data-empid="${p.employeeId}" title="View profile">👁️</button>
             <img src="${p.photoUrl || placeholderImg()}" onerror="this.src='${placeholderImg()}'">
             <span>${p.name || ''}</span>
-            ${MANAGER_IDS.has(p.employeeId) ? '<span class="manager-badge-inline" title="Has direct reports">🌳</span>' : ''}
+            ${MANAGER_IDS.has(p.employeeId) ? '<span class="manager-badge-inline" data-manager-id="' + p.employeeId + '" title="View this person\'s team">🌳</span>' : ''}
           </div>
         </td>
         <td>${p.role || '—'}</td>
         <td>${p.shiftType || '—'}</td>
         <td>${p.transferStatus || 'Stable'}</td>
         <td>${p.rotationStatus === 'overdue' ? 'Overdue' : p.rotationStatus === 'approaching' ? 'Due Soon' : '—'}</td>
+        <td>${nextLeaveDateFor_(p.employeeId)}</td>
       </tr>
     `).join('');
 
@@ -580,7 +605,7 @@ function renderSummary() {
           <span class="summary-cluster-count">${members.length} ${members.length === 1 ? 'member' : 'members'}</span>
         </div>
         <table class="summary-table">
-          <thead><tr><th>Name</th><th>Role</th><th>Shift</th><th>Status</th><th>Rotation</th></tr></thead>
+          <thead><tr><th>Name</th><th>Role</th><th>Shift</th><th>Status</th><th>Rotation</th><th>Next Leave</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -593,6 +618,39 @@ function renderSummary() {
       if (p) openPopup(personnelToNodeShape(p));
     });
   });
+  host.querySelectorAll('.eye-btn-inline').forEach(btn => {
+    btn.addEventListener('click', function(ev) {
+      ev.stopPropagation();
+      const p = RAW.personnel.find(x => x.employeeId === btn.dataset.empid);
+      if (p) openPopup(personnelToNodeShape(p));
+    });
+  });
+  host.querySelectorAll('.manager-badge-inline[data-manager-id]').forEach(badge => {
+    badge.addEventListener('click', function(ev) {
+      ev.stopPropagation();
+      drillToManagerMatrix(badge.dataset.managerId);
+    });
+  });
+}
+
+// Formats a date as "DD-FullMonthName-YYYY", e.g. "05-March-2027"
+function formatDateDMY_(dateValue) {
+  if (!dateValue) return null;
+  const d = new Date(dateValue);
+  if (isNaN(d)) return null;
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const day = String(d.getDate()).padStart(2, '0');
+  return day + '-' + months[d.getMonth()] + '-' + d.getFullYear();
+}
+
+// Finds the most relevant (most recently declared) leave record for an employee
+// and returns their preferred start date formatted as DD-Month-YYYY, or '—' if none.
+function nextLeaveDateFor_(employeeId) {
+  const records = (RAW.leave || []).filter(r => String(r.EmployeeID).trim() === String(employeeId).trim());
+  if (!records.length) return '—';
+  records.sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp));
+  const formatted = formatDateDMY_(records[0].PreferredStart);
+  return formatted || '—';
 }
 
 /* ---------------- TREE VIEW ---------------- */
@@ -653,9 +711,10 @@ function buildNodeEl(n, filteredIds) {
 
   el.innerHTML =
     '<img src="' + (photo || placeholderImg()) + '" onerror="this.src=\'' + placeholderImg() + '\'">' +
+    '<button class="eye-btn" title="View profile" data-empid="' + n.EmployeeID + '">👁️</button>' +
     '<div class="name">' + (n.Name || '') + '</div>' +
     '<div class="role">' + (n.Role || '') + '</div>' +
-    ((n.children && n.children.length) ? '<div class="manager-badge">🌳 ' + n.children.length + ' report' + (n.children.length > 1 ? 's' : '') + '</div>' : '') +
+    ((n.children && n.children.length) ? '<div class="manager-badge" data-manager-id="' + n.EmployeeID + '" title="View this person\'s team in People Matrix">🌳 ' + n.children.length + ' report' + (n.children.length > 1 ? 's' : '') + '</div>' : '') +
     '<div class="tags">' +
       '<span class="tag" style="background:' + clusterColor + '">' + (n.Cluster || '').replace('ODC-','') + '</span>' +
       (n.ShiftType ? '<span class="tag" style="background:#8891a0">' + n.ShiftType + '</span>' : '') +
@@ -666,6 +725,15 @@ function buildNodeEl(n, filteredIds) {
 
   el.addEventListener('click', function(ev) { ev.stopPropagation(); openPopup(n); });
   el.addEventListener('dblclick', function(ev) { ev.stopPropagation(); focusId = n.EmployeeID; render(); });
+
+  const eyeBtn = el.querySelector('.eye-btn');
+  if (eyeBtn) eyeBtn.addEventListener('click', function(ev) { ev.stopPropagation(); openPopup(n); });
+
+  const managerBadge = el.querySelector('.manager-badge');
+  if (managerBadge) managerBadge.addEventListener('click', function(ev) {
+    ev.stopPropagation();
+    drillToManagerMatrix(n.EmployeeID);
+  });
 
   branch.appendChild(el);
   return branch;
@@ -682,7 +750,8 @@ function drawConnectors() {
     '<stop offset="0%" stop-color="#21409a"/><stop offset="100%" stop-color="#f58220"/>' +
     '</linearGradient></defs>';
 
-  function connect(parentId, childId) {
+  // style: 'solid' = direct reporting line (unchanged); 'dotted' = indirect/dotted-line reporting
+  function connect(parentId, childId, style) {
     const p = document.getElementById('node-' + parentId);
     const c = document.getElementById('node-' + childId);
     if (!p || !c) return;
@@ -693,20 +762,58 @@ function drawConnectors() {
     const path = 'M ' + x1 + ' ' + y1 + ' C ' + x1 + ' ' + midY + ', ' + x2 + ' ' + midY + ', ' + x2 + ' ' + y2;
     const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     pathEl.setAttribute('d', path);
-    pathEl.setAttribute('stroke', 'url(#lineGrad)');
-    pathEl.setAttribute('stroke-width', '2');
+    if (style === 'dotted') {
+      pathEl.setAttribute('stroke', '#8891a0');
+      pathEl.setAttribute('stroke-width', '1.6');
+      pathEl.setAttribute('stroke-dasharray', '5,4');
+      pathEl.setAttribute('opacity', '0.65');
+    } else {
+      pathEl.setAttribute('stroke', 'url(#lineGrad)');
+      pathEl.setAttribute('stroke-width', '2');
+      pathEl.setAttribute('opacity', '0.55');
+    }
     pathEl.setAttribute('fill', 'none');
-    pathEl.setAttribute('opacity', '0.55');
     svg.appendChild(pathEl);
   }
 
   function walk(nodes) {
     nodes.forEach(n => {
-      (n.children || []).forEach(c => { connect(n.EmployeeID, c.EmployeeID); });
+      (n.children || []).forEach(c => { connect(n.EmployeeID, c.EmployeeID, 'solid'); });
       walk(n.children || []);
     });
   }
   walk(focusId ? [findNode(RAW.organogram, focusId)].filter(Boolean) : RAW.organogram);
+
+  drawIndirectConnectors_(connect);
+}
+
+// Flattens the org tree into a plain array, for role-based lookups that don't
+// care about the actual reporting hierarchy shape.
+function flattenTree_(nodes) {
+  let out = [];
+  (nodes || []).forEach(n => { out.push(n); out = out.concat(flattenTree_(n.children || [])); });
+  return out;
+}
+
+// Dotted-line (indirect) reporting: every HSE Cluster Lead gets an additional
+// dashed connector to the HSE Lead ODC and to every HSE Site Lead - on top of
+// their existing solid direct-reporting line to their actual line manager.
+function drawIndirectConnectors_(connect) {
+  const all = flattenTree_(RAW.organogram);
+  const clusterLeads = all.filter(n => n.Role === 'HSE Cluster Lead');
+  const hseLeadOdc = all.find(n => n.Role === 'HSE Lead ODC');
+  const siteLeads = all.filter(n => n.Role === 'HSE Site Lead');
+
+  clusterLeads.forEach(lead => {
+    if (hseLeadOdc && hseLeadOdc.EmployeeID !== lead.ReportsToID) {
+      connect(hseLeadOdc.EmployeeID, lead.EmployeeID, 'dotted');
+    }
+    siteLeads.forEach(site => {
+      if (site.EmployeeID !== lead.ReportsToID) {
+        connect(site.EmployeeID, lead.EmployeeID, 'dotted');
+      }
+    });
+  });
 }
 
 function updateBreadcrumb() {
@@ -714,7 +821,8 @@ function updateBreadcrumb() {
   if (!focusId) { bc.classList.remove('show'); return; }
   const node = findNode(RAW.organogram, focusId);
   bc.classList.add('show');
-  document.getElementById('crumbTrail').textContent = node ? ('> ' + node.Name) : '';
+  const suffix = currentView === 'matrix' ? "'s team" : '';
+  document.getElementById('crumbTrail').textContent = node ? ('> ' + node.Name + suffix) : '';
 }
 
 function resetFocus() { focusId = null; render(); }
@@ -722,9 +830,22 @@ function resetFocus() { focusId = null; render(); }
 /* ---------------- MATRIX VIEW ---------------- */
 function renderMatrix() {
   const host = document.getElementById('matrixWrap');
-  const filtered = RAW.personnel.filter(matchesFilters);
-  const clusters = [...new Set(RAW.personnel.map(p => p.cluster).filter(Boolean))].sort();
-  const roles = [...new Set(RAW.personnel.map(p => p.role).filter(Boolean))].sort();
+
+  let filtered, clusters, roles, focusNode = null;
+  if (focusId) {
+    focusNode = findNode(RAW.organogram, focusId);
+    if (focusNode) {
+      const team = [focusNode, ...(focusNode.children || [])];
+      filtered = team.filter(matchesFilters);
+      clusters = [...new Set(team.map(p => p.Cluster).filter(Boolean))].sort();
+      roles = [...new Set(team.map(p => p.Role).filter(Boolean))].sort();
+    }
+  }
+  if (!focusNode) {
+    filtered = RAW.personnel.filter(matchesFilters);
+    clusters = [...new Set(RAW.personnel.map(p => p.cluster).filter(Boolean))].sort();
+    roles = [...new Set(RAW.personnel.map(p => p.role).filter(Boolean))].sort();
+  }
 
   let html = '<table class="matrix"><thead><tr><th>Role \\\\ Cluster</th>';
   clusters.forEach(c => html += '<th>' + c.replace('ODC-','') + '</th>');
@@ -733,8 +854,10 @@ function renderMatrix() {
   roles.forEach(role => {
     html += '<tr><td class="rolecell">' + role + '</td>';
     clusters.forEach(cluster => {
-      const people = filtered.filter(p => p.role === role && p.cluster === cluster);
-      html += '<td class="datacell">' + people.map(p => avatarChipHtml(p)).join('') + '</td>';
+      const people = focusNode
+        ? filtered.filter(p => (p.Role || p.role) === role && (p.Cluster || p.cluster) === cluster)
+        : filtered.filter(p => p.role === role && p.cluster === cluster);
+      html += '<td class="datacell">' + people.map(p => avatarChipHtml(focusNode ? personnelFromNode_(p) : p)).join('') + '</td>';
     });
     html += '</tr>';
   });
@@ -747,12 +870,43 @@ function renderMatrix() {
       if (p) openPopup(personnelToNodeShape(p));
     });
   });
+  host.querySelectorAll('.eye-btn-inline').forEach(btn => {
+    btn.addEventListener('click', function(ev) {
+      ev.stopPropagation();
+      const p = RAW.personnel.find(x => x.employeeId === btn.dataset.empid);
+      if (p) openPopup(personnelToNodeShape(p));
+    });
+  });
+  host.querySelectorAll('.manager-badge-inline[data-manager-id]').forEach(badge => {
+    badge.addEventListener('click', function(ev) {
+      ev.stopPropagation();
+      drillToManagerMatrix(badge.dataset.managerId);
+    });
+  });
+}
+
+// Normalizes a tree-shaped node (EmployeeID/Name/Cluster/...) back into the flat
+// personnel shape avatarChipHtml expects, for the focused-manager Matrix view.
+function personnelFromNode_(n) {
+  return {
+    employeeId: n.EmployeeID, name: n.Name, role: n.Role, cluster: n.Cluster,
+    photoUrl: n.PhotoFileID ? ('https://drive.google.com/thumbnail?id=' + n.PhotoFileID) : ''
+  };
+}
+
+// Called by clicking a manager's 🌳 badge in Tree view - switches to People Matrix,
+// filtered to just that manager and their direct reports.
+function drillToManagerMatrix(employeeId) {
+  focusId = employeeId;
+  setView('matrix');
 }
 
 function avatarChipHtml(p) {
   const photo = p.photoUrl || placeholderImg();
-  const managerIcon = MANAGER_IDS.has(p.employeeId) ? '<span class="manager-badge-inline" title="Has direct reports">🌳</span>' : '';
-  return '<span class="avatar-chip" data-empid="' + p.employeeId + '"><img src="' + photo + '" onerror="this.src=\'' + placeholderImg() + '\'"><span>' + (p.name || '') + '</span>' + managerIcon + '</span>';
+  const managerIcon = MANAGER_IDS.has(p.employeeId) ? '<span class="manager-badge-inline" data-manager-id="' + p.employeeId + '" title="View this person\'s team">🌳</span>' : '';
+  return '<span class="avatar-chip" data-empid="' + p.employeeId + '">' +
+    '<button class="eye-btn-inline" data-empid="' + p.employeeId + '" title="View profile">👁️</button>' +
+    '<img src="' + photo + '" onerror="this.src=\'' + placeholderImg() + '\'"><span>' + (p.name || '') + '</span>' + managerIcon + '</span>';
 }
 
 function personnelToNodeShape(p) {
