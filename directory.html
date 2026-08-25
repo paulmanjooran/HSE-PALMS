@@ -717,6 +717,20 @@ function renderTree() {
         contextNodeIds = new Set(contextNodes.map(n => n.EmployeeID));
       }
     }
+
+    // Reverse case: drilled into HSE Lead ODC himself - show every Cluster HSE
+    // Lead and Site HSE Lead as dotted-line "virtual reports" beneath him, even
+    // though they aren't his literal direct reports in the real hierarchy.
+    if (roots.length === 1 && roots[0].Role === 'HSE Lead ODC') {
+      const alreadyVisibleIds2 = new Set(subtreeNodes.map(n => n.EmployeeID));
+      const dottedChildren = flattenTree_(RAW.organogram).filter(n =>
+        (n.Role === 'HSE Cluster Lead' || n.Role === 'HSE Site Lead') && !alreadyVisibleIds2.has(n.EmployeeID)
+      );
+      if (dottedChildren.length) {
+        levels[1] = (levels[1] || []).concat(dottedChildren);
+        dottedChildren.forEach(n => contextNodeIds.add(n.EmployeeID));
+      }
+    }
   }
 
   levels.forEach((levelNodes, depth) => {
@@ -867,6 +881,13 @@ function drawIndirectConnectors_(connect) {
         connect(site.EmployeeID, lead.EmployeeID, 'dotted');
       }
     });
+  });
+
+  // Every Site HSE Lead also gets a direct dotted line to HSE Lead ODC.
+  siteLeads.forEach(site => {
+    if (hseLeadOdc && hseLeadOdc.EmployeeID !== site.ReportsToID) {
+      connect(hseLeadOdc.EmployeeID, site.EmployeeID, 'dotted');
+    }
   });
 
   // Industrial Hygenist reports indirectly (dotted) to HSE Lead ODC, who sits
