@@ -703,11 +703,14 @@ function renderTree() {
   // them as a small reference row above the focused root so the indirect
   // reporting line stays visible even zoomed in.
   let contextNodeIds = new Set();
+  let dottedContextIds = new Set();
   solidContextConnections = [];
   if (focusId) {
     const subtreeNodes = flattenTree_(roots);
     const hasClusterLead = subtreeNodes.some(n => n.Role === 'HSE Cluster Lead');
     const hasIndustrialHygenist = subtreeNodes.some(n => n.Role === 'Industrial Hygenist');
+    const lastLevelIdx = () => levels.length - 1;
+
     if (hasClusterLead || hasIndustrialHygenist) {
       const allNodes = flattenTree_(RAW.organogram);
       const alreadyVisibleIds = new Set(subtreeNodes.map(n => n.EmployeeID));
@@ -715,16 +718,20 @@ function renderTree() {
         (n.Role === 'HSE Lead ODC' || (hasClusterLead && n.Role === 'HSE Site Lead')) && !alreadyVisibleIds.has(n.EmployeeID)
       );
       if (contextNodes.length) {
-        levels.unshift(contextNodes);
+        // Placed beside the focused root (same row, to the left) rather than
+        // stacked as their own row above - keeps HSE Lead ODC visually on the
+        // left side of the focused person, not sitting between them and HSE GM.
+        levels[0] = contextNodes.concat(levels[0] || []);
         contextNodeIds = new Set(contextNodes.map(n => n.EmployeeID));
+        dottedContextIds = new Set(contextNodeIds);
       }
     }
 
     // A Cluster Lead's actual direct manager (HSE GM/HSE Manager) is normally
     // cut off too, since drilling in only shows the focused person's own
     // descendants, not their ancestors. Show them the same dimmed way as the
-    // indirect context nodes above - but connect with a SOLID line, since this
-    // is their real reporting relationship, not an indirect one.
+    // indirect context nodes - but connect with a SOLID line, since this is
+    // their real reporting relationship, not an indirect one. Always on top.
     if (hasClusterLead && roots.length === 1) {
       const manager = findNode(RAW.organogram, roots[0].ReportsToID);
       if (manager && !flattenTree_(roots).some(n => n.EmployeeID === manager.EmployeeID)) {
@@ -735,7 +742,7 @@ function renderTree() {
     }
 
     // Reverse case: drilled into HSE Lead ODC himself - show every Cluster HSE
-    // Lead and Site HSE Lead as dotted-line "virtual reports" beneath him, even
+    // Lead and Site HSE Lead as dotted-line "virtual reports" beside him, even
     // though they aren't his literal direct reports in the real hierarchy.
     if (roots.length === 1 && roots[0].Role === 'HSE Lead ODC') {
       const alreadyVisibleIds2 = new Set(subtreeNodes.map(n => n.EmployeeID));
@@ -744,7 +751,7 @@ function renderTree() {
       );
       if (dottedChildren.length) {
         levels[1] = (levels[1] || []).concat(dottedChildren);
-        dottedChildren.forEach(n => contextNodeIds.add(n.EmployeeID));
+        dottedChildren.forEach(n => { contextNodeIds.add(n.EmployeeID); dottedContextIds.add(n.EmployeeID); });
       }
     }
   }
@@ -753,8 +760,8 @@ function renderTree() {
     const levelDiv = document.createElement('div');
     levelDiv.className = 'tree-level';
     levelDiv.dataset.depth = depth;
-    if (contextNodeIds.size && levelNodes.every(n => contextNodeIds.has(n.EmployeeID))) {
-      levelDiv.classList.add('context-level');
+    const dottedNodesInLevel = levelNodes.filter(n => dottedContextIds.has(n.EmployeeID));
+    if (dottedNodesInLevel.length) {
       const label = document.createElement('div');
       label.className = 'context-level-label';
       label.textContent = 'Indirect reporting line (dotted)';
@@ -765,7 +772,7 @@ function renderTree() {
   });
 
   updateBreadcrumb();
-  requestAnimationFrame(drawConnectors);
+  requestAnimationFrame(() => requestAnimationFrame(drawConnectors));
 }
 
 function findNode(nodes, id) {
