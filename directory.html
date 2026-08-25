@@ -83,7 +83,7 @@
 
   .node {
     width: 148px; padding: 14px 12px 12px; border-radius: 16px; text-align: center; cursor: pointer;
-    background: var(--glass-strong); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    background: rgba(255,255,255,0.95); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
     border: 1px solid var(--glass-border); box-shadow: 0 6px 20px rgba(30,40,60,0.10);
     transition: transform .18s, box-shadow .18s; position: relative;
   }
@@ -723,8 +723,7 @@ function buildNodeEl(n, filteredIds) {
     '</div>' +
     ((n.children && n.children.length) ? '<div class="count-badge">' + n.children.length + '</div>' : '');
 
-  el.addEventListener('click', function(ev) { ev.stopPropagation(); openPopup(n); });
-  el.addEventListener('dblclick', function(ev) { ev.stopPropagation(); focusId = n.EmployeeID; render(); });
+  el.addEventListener('click', function(ev) { ev.stopPropagation(); focusId = n.EmployeeID; render(); });
 
   const eyeBtn = el.querySelector('.eye-btn');
   if (eyeBtn) eyeBtn.addEventListener('click', function(ev) { ev.stopPropagation(); openPopup(n); });
