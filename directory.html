@@ -135,6 +135,31 @@
   #summaryWrap { display: none; }
   #summaryWrap.show { display: block; }
   .summary-cluster { margin-bottom: 22px; }
+  .workforce-summary { margin-bottom: 30px; }
+  .ws-headline {
+    display: flex; align-items: baseline; gap: 14px; padding: 20px 24px; border-radius: 16px; margin-bottom: 16px;
+    background: linear-gradient(135deg, var(--blue), #2d55c9); box-shadow: 0 10px 28px rgba(33,64,154,0.28);
+  }
+  .ws-headline-num { font-family: 'Manrope'; font-weight: 800; font-size: 38px; color: #fff; }
+  .ws-headline-label { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.9); text-transform: uppercase; letter-spacing: .03em; }
+  table.ws-table { width: 100%; border-collapse: separate; border-spacing: 0 6px; }
+  table.ws-table th {
+    text-align: left; font-size: 10px; font-weight: 700; color: #8891a0; text-transform: uppercase;
+    letter-spacing: .03em; padding: 4px 12px;
+  }
+  table.ws-table td {
+    background: rgba(255,255,255,0.7); backdrop-filter: blur(10px); padding: 10px 12px; font-size: 12.5px;
+    border-top: 1px solid rgba(255,255,255,0.6); border-bottom: 1px solid rgba(255,255,255,0.6); font-weight: 600;
+  }
+  table.ws-table tr td:first-child { border-left: 1px solid rgba(255,255,255,0.6); border-radius: 10px 0 0 10px; }
+  table.ws-table tr td:last-child { border-right: 1px solid rgba(255,255,255,0.6); border-radius: 0 10px 10px 0; }
+  table.ws-table .ws-cluster-cell { font-family: 'Manrope'; font-weight: 800; color: var(--dark); }
+  table.ws-table tfoot td {
+    background: rgba(245,130,32,0.12); border-top: 1px solid rgba(245,130,32,0.3); border-bottom: 1px solid rgba(245,130,32,0.3);
+    font-family: 'Manrope'; font-weight: 800; color: var(--orange);
+  }
+  table.ws-table tfoot tr td:first-child { border-left: 1px solid rgba(245,130,32,0.3); border-radius: 10px 0 0 10px; }
+  table.ws-table tfoot tr td:last-child { border-right: 1px solid rgba(245,130,32,0.3); border-radius: 0 10px 10px 0; }
   .summary-cluster-header {
     display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 12px;
     background: rgba(255,255,255,0.5); backdrop-filter: blur(20px) saturate(1.6); -webkit-backdrop-filter: blur(20px) saturate(1.6);
@@ -172,6 +197,11 @@
   table.matrix td.datacell {
     background: rgba(255,255,255,0.35); border-radius: 12px; padding: 8px; vertical-align: top; min-width: 130px;
     border: 1px solid rgba(255,255,255,0.5);
+  }
+  table.matrix th.total-col-header { background: linear-gradient(135deg, var(--orange), #ff9d4d); }
+  table.matrix td.total-col {
+    font-family: 'Manrope'; font-weight: 800; font-size: 15px; color: var(--orange); text-align: center;
+    background: rgba(245,130,32,0.08); border-radius: 10px; border: 1px solid rgba(245,130,32,0.2); vertical-align: middle;
   }
   .avatar-chip {
     display: inline-flex; align-items: center; gap: 6px; background: var(--glass-strong); backdrop-filter: blur(8px);
@@ -457,6 +487,13 @@
     <label>Shift Type</label>
     <select id="editShiftType"></select>
 
+    <label>Nationality</label>
+    <select id="editNationality">
+      <option value="">Not set</option>
+      <option value="National">National</option>
+      <option value="Expatriate">Expatriate</option>
+    </select>
+
     <label>Line Manager (Employee ID)</label>
     <input type="text" id="editLineManagerId">
 
@@ -603,7 +640,7 @@ function renderSummary() {
   const filtered = RAW.personnel.filter(matchesFilters);
   const clusters = [...new Set(RAW.personnel.map(p => p.cluster).filter(Boolean))].sort();
 
-  host.innerHTML = clusters.map(cluster => {
+  const clusterBreakdown = clusters.map(cluster => {
     const members = filtered.filter(p => p.cluster === cluster)
       .sort((a, b) => (a.role || '').localeCompare(b.role || '') || (a.name || '').localeCompare(b.name || ''));
 
@@ -641,6 +678,8 @@ function renderSummary() {
     `;
   }).join('') || '<div class="summary-empty-cluster">No personnel match the current filters.</div>';
 
+  host.innerHTML = buildWorkforceSummaryHtml_(filtered, clusters) + clusterBreakdown;
+
   host.querySelectorAll('tr[data-empid]').forEach(row => {
     row.addEventListener('click', function() {
       const p = RAW.personnel.find(x => x.employeeId === row.dataset.empid);
@@ -660,6 +699,62 @@ function renderSummary() {
       drillToManagerMatrix(badge.dataset.managerId);
     });
   });
+}
+
+// HSE Workforce Summary - shown above the per-cluster breakdown in Cluster
+// Summary view. Covers: HSE Advisor headcount per cluster, National vs
+// Expatriate split per cluster, total staff per cluster, and the grand total
+// across the whole ODC contract. Respects whatever filters are currently active.
+function buildWorkforceSummaryHtml_(filtered, clusters) {
+  const grandTotal = filtered.length;
+  const rows = clusters.map(cluster => {
+    const clusterPeople = filtered.filter(p => p.cluster === cluster);
+    const advisors = clusterPeople.filter(p => p.role === 'HSE Advisor').length;
+    const national = clusterPeople.filter(p => p.nationality === 'National').length;
+    const expatriate = clusterPeople.filter(p => p.nationality === 'Expatriate').length;
+    const unspecified = clusterPeople.length - national - expatriate;
+    return { cluster, total: clusterPeople.length, advisors, national, expatriate, unspecified };
+  }).filter(r => r.total > 0);
+
+  const totalAdvisors = rows.reduce((sum, r) => sum + r.advisors, 0);
+  const totalNational = rows.reduce((sum, r) => sum + r.national, 0);
+  const totalExpatriate = rows.reduce((sum, r) => sum + r.expatriate, 0);
+  const totalUnspecified = rows.reduce((sum, r) => sum + r.unspecified, 0);
+
+  const tableRows = rows.map(r => `
+    <tr>
+      <td class="ws-cluster-cell">${r.cluster}</td>
+      <td>${r.total}</td>
+      <td>${r.advisors}</td>
+      <td>${r.national}</td>
+      <td>${r.expatriate}</td>
+      <td>${r.unspecified || '—'}</td>
+    </tr>
+  `).join('');
+
+  return `
+    <div class="workforce-summary">
+      <div class="ws-headline">
+        <div class="ws-headline-num">${grandTotal}</div>
+        <div class="ws-headline-label">Total HSE Personnel — PDO ODC South Contract</div>
+      </div>
+      <table class="ws-table">
+        <thead>
+          <tr>
+            <th>Cluster</th><th>Total Staff</th><th>HSE Advisors</th>
+            <th>National</th><th>Expatriate</th><th>Unspecified</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+        <tfoot>
+          <tr>
+            <td>TOTAL</td><td>${grandTotal}</td><td>${totalAdvisors}</td>
+            <td>${totalNational}</td><td>${totalExpatriate}</td><td>${totalUnspecified || '—'}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  `;
 }
 
 // Formats a date as "DD-FullMonthName-YYYY", e.g. "05-March-2027"
@@ -993,16 +1088,19 @@ function renderMatrix() {
 
   let html = '<table class="matrix"><thead><tr><th>Role \\\\ Cluster</th>';
   clusters.forEach(c => html += '<th>' + c.replace('ODC-','') + '</th>');
-  html += '</tr></thead><tbody>';
+  html += '<th class="total-col-header">Total</th></tr></thead><tbody>';
 
   roles.forEach(role => {
     html += '<tr><td class="rolecell">' + role + '</td>';
+    let roleTotal = 0;
     clusters.forEach(cluster => {
       const people = focusNode
         ? filtered.filter(p => (p.Role || p.role) === role && (p.Cluster || p.cluster) === cluster)
         : filtered.filter(p => p.role === role && p.cluster === cluster);
+      roleTotal += people.length;
       html += '<td class="datacell">' + people.map(p => avatarChipHtml(focusNode ? personnelFromNode_(p) : p)).join('') + '</td>';
     });
+    html += '<td class="total-col">' + roleTotal + '</td>';
     html += '</tr>';
   });
   html += '</tbody></table>';
@@ -1144,6 +1242,7 @@ function enterEditMode() {
       document.getElementById('editFullName').value = person.Name || '';
       document.getElementById('editEmail').value = person.Email || '';
       document.getElementById('editCluster').value = person.Cluster || '';
+      document.getElementById('editNationality').value = person.Nationality || '';
       document.getElementById('editLineManagerId').value = person.ReportsToID || '';
       document.getElementById('editLineManagerName').value = person.LineManagerName || '';
       document.getElementById('editLineManagerEmail').value = person.LineManagerEmail || '';
@@ -1243,6 +1342,7 @@ function saveProfile() {
     email: document.getElementById('editEmail').value,
     role: document.getElementById('editRole').value,
     shiftType: document.getElementById('editShiftType').value,
+    nationality: document.getElementById('editNationality').value,
     lineManagerId: document.getElementById('editLineManagerId').value.trim(),
     lineManagerName: document.getElementById('editLineManagerName').value,
     lineManagerEmail: document.getElementById('editLineManagerEmail').value,
