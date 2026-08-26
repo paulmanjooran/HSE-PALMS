@@ -13,18 +13,20 @@
     --dark: #4d555b;
     --blue: #21409a;
     --orange: #f58220;
-    --glass: rgba(255,255,255,0.55);
-    --glass-border: rgba(255,255,255,0.7);
+    --glass: rgba(255,255,255,0.45);
+    --glass-border: rgba(255,255,255,0.8);
     --glass-strong: rgba(255,255,255,0.75);
   }
   * { box-sizing: border-box; }
   body {
     margin: 0; min-height: 100vh; font-family: 'Inter', sans-serif; color: var(--dark);
     background:
-      radial-gradient(circle at 12% 8%, rgba(33,64,154,0.16), transparent 42%),
-      radial-gradient(circle at 88% 15%, rgba(245,130,32,0.14), transparent 45%),
-      radial-gradient(circle at 50% 90%, rgba(77,85,91,0.10), transparent 50%),
-      linear-gradient(160deg, #eef1f4 0%, #e7ebef 100%);
+      radial-gradient(circle at 8% 10%, rgba(33,64,154,0.30), transparent 42%),
+      radial-gradient(circle at 92% 12%, rgba(245,130,32,0.28), transparent 45%),
+      radial-gradient(circle at 15% 85%, rgba(236,64,122,0.22), transparent 48%),
+      radial-gradient(circle at 88% 88%, rgba(126,87,194,0.24), transparent 46%),
+      radial-gradient(circle at 50% 50%, rgba(46,196,182,0.14), transparent 55%),
+      linear-gradient(160deg, #f4f0fb 0%, #eef4fb 50%, #fdf1f0 100%);
     background-attachment: fixed;
   }
   h1, h2, .brand-font { font-family: 'Manrope', sans-serif; }
@@ -32,7 +34,7 @@
   /* ---------- top bar ---------- */
   #topbar {
     position: sticky; top: 0; z-index: 40; padding: 16px 24px;
-    background: var(--glass); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    background: var(--glass); backdrop-filter: blur(28px) saturate(1.7); -webkit-backdrop-filter: blur(28px) saturate(1.7);
     border-bottom: 1px solid var(--glass-border);
     display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
   }
@@ -56,7 +58,8 @@
   /* ---------- filter bar ---------- */
   #filterbar {
     position: sticky; top: 68px; z-index: 30; padding: 12px 24px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
-    background: rgba(238,241,244,0.7); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.5);
+    background: rgba(255,255,255,0.35); backdrop-filter: blur(22px) saturate(1.6); -webkit-backdrop-filter: blur(22px) saturate(1.6);
+    border-bottom: 1px solid rgba(255,255,255,0.6);
   }
   .filter-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #8891a0; margin-right: 2px; }
   .chip {
@@ -90,20 +93,25 @@
     color: #8891a0; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap;
   }
   .node.context-node { opacity: 0.6; border: 1px dashed #8891a0; }
+  .tree-branch.odc-half-level .node { margin-top: -46px; }
   .node.context-node:hover { opacity: 1; }
   .tree-branch { display: flex; flex-direction: column; align-items: center; }
 
   .node {
-    width: 148px; padding: 14px 12px 12px; border-radius: 16px; text-align: center; cursor: pointer;
+    width: 172px; padding: 16px 14px 14px; border-radius: 16px; text-align: center; cursor: pointer;
     background: rgba(255,255,255,0.95); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
     border: 1px solid var(--glass-border); box-shadow: 0 6px 20px rgba(30,40,60,0.10);
-    transition: transform .18s, box-shadow .18s; position: relative;
+    transition: transform .18s, box-shadow .18s; position: relative; overflow: hidden;
+  }
+  .node::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 46%; border-radius: 16px 16px 60% 60% / 16px 16px 100% 100%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.65), rgba(255,255,255,0)); pointer-events: none;
   }
   .node:hover { transform: translateY(-4px) scale(1.03); box-shadow: 0 12px 28px rgba(30,40,60,0.18); z-index: 5; }
   .node.dimmed { opacity: 0.25; }
   .node.pending { box-shadow: 0 0 0 2px var(--orange), 0 6px 20px rgba(245,130,32,0.25); }
   .node.rotation-overdue { box-shadow: 0 0 0 2px #c62828, 0 6px 20px rgba(198,40,40,0.25); }
-  .node img { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; background: #dfe3e7; border: 2px solid #fff; }
+  .node img { width: 76px; height: 76px; border-radius: 50%; object-fit: cover; background: #dfe3e7; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
   .node .name { font-family: 'Manrope'; font-weight: 700; font-size: 12.5px; margin-top: 8px; line-height: 1.25; }
   .node .role { font-size: 10.5px; color: #8891a0; margin-top: 2px; }
   .node .tags { display: flex; gap: 4px; justify-content: center; margin-top: 6px; flex-wrap: wrap; }
@@ -132,7 +140,8 @@
   .summary-cluster { margin-bottom: 22px; }
   .summary-cluster-header {
     display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 12px;
-    background: var(--glass-strong); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); margin-bottom: 10px;
+    background: rgba(255,255,255,0.5); backdrop-filter: blur(20px) saturate(1.6); -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    border: 1px solid var(--glass-border); margin-bottom: 10px; box-shadow: 0 4px 14px rgba(30,40,60,0.06);
   }
   .summary-cluster-name { font-family: 'Manrope'; font-weight: 800; font-size: 14px; }
   .summary-cluster-count {
@@ -151,7 +160,7 @@
   table.summary-table tr td:last-child { border-right: 1px solid rgba(255,255,255,0.6); border-radius: 0 10px 10px 0; }
   table.summary-table tr:hover td { background: rgba(255,255,255,0.9); }
   .summary-name-cell { display: flex; align-items: center; gap: 8px; font-weight: 600; }
-  .summary-name-cell img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; background: #ddd; }
+  .summary-name-cell img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; background: #ddd; }
   .summary-empty-cluster { font-size: 12px; color: #8891a0; padding: 10px 16px; }
   table.matrix { border-collapse: separate; border-spacing: 8px; width: 100%; }
   table.matrix th {
@@ -173,7 +182,7 @@
     transition: transform .15s;
   }
   .avatar-chip:hover { transform: scale(1.06); }
-  .avatar-chip img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; background: #dfe3e7; }
+  .avatar-chip img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; background: #dfe3e7; }
   .avatar-chip span { font-size: 10.5px; font-weight: 600; }
   .eye-btn-inline {
     border: none; background: transparent; font-size: 10px; cursor: pointer; padding: 0 2px; line-height: 1;
@@ -703,6 +712,7 @@ function renderTree() {
   // them as a small reference row above the focused root so the indirect
   // reporting line stays visible even zoomed in.
   let contextNodeIds = new Set();
+  let halfLevelIds = new Set();
   let dottedContextIds = new Set();
   solidContextConnections = [];
   if (focusId) {
@@ -724,6 +734,9 @@ function renderTree() {
         levels[0] = contextNodes.concat(levels[0] || []);
         contextNodeIds = new Set(contextNodes.map(n => n.EmployeeID));
         dottedContextIds = new Set(contextNodeIds);
+        // HSE Lead ODC specifically sits half a level below HSE GM - staggered
+        // between the two rows, not fully aligned with either.
+        contextNodes.filter(n => n.Role === 'HSE Lead ODC').forEach(n => halfLevelIds.add(n.EmployeeID));
       }
     }
 
@@ -767,7 +780,11 @@ function renderTree() {
       label.textContent = 'Indirect reporting line (dotted)';
       levelDiv.appendChild(label);
     }
-    levelNodes.forEach(n => levelDiv.appendChild(buildNodeEl(n, filteredIds, contextNodeIds.has(n.EmployeeID))));
+    levelNodes.forEach(n => {
+      const el = buildNodeEl(n, filteredIds, contextNodeIds.has(n.EmployeeID));
+      if (halfLevelIds.has(n.EmployeeID)) el.classList.add('odc-half-level');
+      levelDiv.appendChild(el);
+    });
     levelsHost.appendChild(levelDiv);
   });
 
