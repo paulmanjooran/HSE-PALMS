@@ -86,7 +86,6 @@
   /* ---------- tree ---------- */
   #treeCanvas { position: relative; overflow-x: auto; padding-bottom: 40px; }
   svg#connectors { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
-  svg#dottedConnectors { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
   .tree-level { display: flex; justify-content: center; gap: 36px; margin-bottom: 64px; position: relative; z-index: 2; flex-wrap: wrap; }
   .tree-level.context-level { margin-bottom: 34px; }
   .context-level-label {
@@ -408,7 +407,6 @@
 
   <div id="treeCanvas">
     <svg id="connectors"></svg>
-    <svg id="dottedConnectors"></svg>
     <div id="treeLevels"></div>
   </div>
 
@@ -866,48 +864,64 @@ function buildNodeEl(n, filteredIds, isContext) {
 
 function drawConnectors() {
   const svg = document.getElementById('connectors');
-  const dottedSvg = document.getElementById('dottedConnectors');
   const stage = document.getElementById('treeCanvas');
   const stageRect = stage.getBoundingClientRect();
   svg.setAttribute('width', stage.scrollWidth);
   svg.setAttribute('height', stage.scrollHeight);
-  dottedSvg.setAttribute('width', stage.scrollWidth);
-  dottedSvg.setAttribute('height', stage.scrollHeight);
   svg.innerHTML =
     '<defs><linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">' +
     '<stop offset="0%" stop-color="#21409a"/><stop offset="100%" stop-color="#f58220"/>' +
     '</linearGradient></defs>';
-  dottedSvg.innerHTML = '';
 
-  // style: 'solid' = direct reporting line (unchanged, stays behind cards);
-  // 'dotted' = indirect/dotted-line reporting, drawn in a separate layer that
-  // sits ABOVE the cards, so it's always clearly visible even when its curve
-  // passes near an unrelated card rather than being hidden behind it.
+  // style: 'solid' = direct reporting line; 'dotted' = indirect/dotted-line reporting.
+  // Both stay in one layer, tucked behind the cards as before. Routing adapts to
+  // whether the two people are roughly at the same row (common for dotted lines,
+  // e.g. HSE Lead ODC beside a Cluster Lead) vs a genuine vertical parent-child
+  // relationship, so the curve clears neighboring cards cleanly either way
+  // instead of cutting straight through them.
   function connect(parentId, childId, style) {
     const p = document.getElementById('node-' + parentId);
     const c = document.getElementById('node-' + childId);
     if (!p || !c) return;
     const pr = p.getBoundingClientRect(), cr = c.getBoundingClientRect();
-    const x1 = pr.left + pr.width/2 - stageRect.left, y1 = pr.bottom - stageRect.top;
-    const x2 = cr.left + cr.width/2 - stageRect.left, y2 = cr.top - stageRect.top;
-    const midY = (y1 + y2) / 2;
-    const path = 'M ' + x1 + ' ' + y1 + ' C ' + x1 + ' ' + midY + ', ' + x2 + ' ' + midY + ', ' + x2 + ' ' + y2;
+    const pTop = pr.top - stageRect.top, pBottom = pr.bottom - stageRect.top, pCenterY = pTop + pr.height / 2;
+    const cTop = cr.top - stageRect.top, cBottom = cr.bottom - stageRect.top, cCenterY = cTop + cr.height / 2;
+    const sameRow = Math.abs(pCenterY - cCenterY) < Math.max(pr.height, cr.height) * 0.6;
+
+    let path;
+    if (sameRow) {
+      // Side-to-side curve, dipping below both cards so it never crosses through
+      // anything sitting between them.
+      const pLeft = pr.left - stageRect.left, pRight = pr.right - stageRect.left;
+      const cLeft = cr.left - stageRect.left, cRight = cr.right - stageRect.left;
+      const goingRight = cLeft > pLeft;
+      const x1 = goingRight ? pRight : pLeft;
+      const x2 = goingRight ? cLeft : cRight;
+      const y1 = pBottom - pr.height * 0.15;
+      const y2 = cBottom - cr.height * 0.15;
+      const dipY = Math.max(pBottom, cBottom) + 22;
+      path = 'M ' + x1 + ' ' + y1 + ' C ' + x1 + ' ' + dipY + ', ' + x2 + ' ' + dipY + ', ' + x2 + ' ' + y2;
+    } else {
+      const x1 = pr.left + pr.width/2 - stageRect.left, y1 = pBottom;
+      const x2 = cr.left + cr.width/2 - stageRect.left, y2 = cTop;
+      const midY = (y1 + y2) / 2;
+      path = 'M ' + x1 + ' ' + y1 + ' C ' + x1 + ' ' + midY + ', ' + x2 + ' ' + midY + ', ' + x2 + ' ' + y2;
+    }
+
     const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     pathEl.setAttribute('d', path);
+    pathEl.setAttribute('fill', 'none');
     if (style === 'dotted') {
       pathEl.setAttribute('stroke', '#8891a0');
       pathEl.setAttribute('stroke-width', '1.6');
       pathEl.setAttribute('stroke-dasharray', '5,4');
-      pathEl.setAttribute('opacity', '0.8');
-      pathEl.setAttribute('fill', 'none');
-      dottedSvg.appendChild(pathEl);
+      pathEl.setAttribute('opacity', '0.75');
     } else {
       pathEl.setAttribute('stroke', 'url(#lineGrad)');
       pathEl.setAttribute('stroke-width', '2');
       pathEl.setAttribute('opacity', '0.55');
-      pathEl.setAttribute('fill', 'none');
-      svg.appendChild(pathEl);
     }
+    svg.appendChild(pathEl);
   }
 
   function walk(nodes) {
