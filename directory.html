@@ -740,12 +740,13 @@ function renderTree() {
       }
     }
 
-    // A Cluster Lead's actual direct manager (HSE GM/HSE Manager) is normally
-    // cut off too, since drilling in only shows the focused person's own
-    // descendants, not their ancestors. Show them the same dimmed way as the
-    // indirect context nodes - but connect with a SOLID line, since this is
-    // their real reporting relationship, not an indirect one. Always on top.
-    if (hasClusterLead && roots.length === 1) {
+    // Anyone's actual direct manager is normally cut off when drilling in, since
+    // drilling only shows the focused person's own descendants, not their
+    // ancestors. Show that manager the same dimmed way as the indirect context
+    // nodes - but connect with a SOLID line, since this is a real reporting
+    // relationship. Applies whenever focused on exactly one person (Cluster
+    // Lead, HSE Lead ODC, or anyone else with a manager not already visible).
+    if (roots.length === 1) {
       const manager = findNode(RAW.organogram, roots[0].ReportsToID);
       if (manager && !flattenTree_(roots).some(n => n.EmployeeID === manager.EmployeeID)) {
         levels.unshift([manager]);
