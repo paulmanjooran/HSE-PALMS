@@ -86,6 +86,7 @@
   /* ---------- tree ---------- */
   #treeCanvas { position: relative; overflow-x: auto; padding-bottom: 40px; }
   svg#connectors { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+  svg#dottedConnectors { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
   .tree-level { display: flex; justify-content: center; gap: 36px; margin-bottom: 64px; position: relative; z-index: 2; flex-wrap: wrap; }
   .tree-level.context-level { margin-bottom: 34px; }
   .context-level-label {
@@ -407,6 +408,7 @@
 
   <div id="treeCanvas">
     <svg id="connectors"></svg>
+    <svg id="dottedConnectors"></svg>
     <div id="treeLevels"></div>
   </div>
 
@@ -705,6 +707,16 @@ function renderTree() {
   }
   walk(roots, 0);
 
+  // Center HSE Lead ODC within his row of siblings - he should sit directly
+  // below HSE GM, not wherever he happened to land in the natural sheet order.
+  levels.forEach(levelNodes => {
+    const odcIdx = levelNodes.findIndex(n => n.Role === 'HSE Lead ODC');
+    if (odcIdx > -1 && levelNodes.length > 1) {
+      const [odc] = levelNodes.splice(odcIdx, 1);
+      levelNodes.splice(Math.floor(levelNodes.length / 2), 0, odc);
+    }
+  });
+
   // When drilled into a Cluster Lead's or Industrial Hygenist's own subtree,
   // their dotted-line "indirect manager" (HSE Lead ODC / Site Leads) usually
   // isn't a literal descendant, so it wouldn't normally be rendered at all -
@@ -854,16 +866,23 @@ function buildNodeEl(n, filteredIds, isContext) {
 
 function drawConnectors() {
   const svg = document.getElementById('connectors');
+  const dottedSvg = document.getElementById('dottedConnectors');
   const stage = document.getElementById('treeCanvas');
   const stageRect = stage.getBoundingClientRect();
   svg.setAttribute('width', stage.scrollWidth);
   svg.setAttribute('height', stage.scrollHeight);
+  dottedSvg.setAttribute('width', stage.scrollWidth);
+  dottedSvg.setAttribute('height', stage.scrollHeight);
   svg.innerHTML =
     '<defs><linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">' +
     '<stop offset="0%" stop-color="#21409a"/><stop offset="100%" stop-color="#f58220"/>' +
     '</linearGradient></defs>';
+  dottedSvg.innerHTML = '';
 
-  // style: 'solid' = direct reporting line (unchanged); 'dotted' = indirect/dotted-line reporting
+  // style: 'solid' = direct reporting line (unchanged, stays behind cards);
+  // 'dotted' = indirect/dotted-line reporting, drawn in a separate layer that
+  // sits ABOVE the cards, so it's always clearly visible even when its curve
+  // passes near an unrelated card rather than being hidden behind it.
   function connect(parentId, childId, style) {
     const p = document.getElementById('node-' + parentId);
     const c = document.getElementById('node-' + childId);
@@ -879,14 +898,16 @@ function drawConnectors() {
       pathEl.setAttribute('stroke', '#8891a0');
       pathEl.setAttribute('stroke-width', '1.6');
       pathEl.setAttribute('stroke-dasharray', '5,4');
-      pathEl.setAttribute('opacity', '0.65');
+      pathEl.setAttribute('opacity', '0.8');
+      pathEl.setAttribute('fill', 'none');
+      dottedSvg.appendChild(pathEl);
     } else {
       pathEl.setAttribute('stroke', 'url(#lineGrad)');
       pathEl.setAttribute('stroke-width', '2');
       pathEl.setAttribute('opacity', '0.55');
+      pathEl.setAttribute('fill', 'none');
+      svg.appendChild(pathEl);
     }
-    pathEl.setAttribute('fill', 'none');
-    svg.appendChild(pathEl);
   }
 
   function walk(nodes) {
