@@ -705,16 +705,6 @@ function renderTree() {
   }
   walk(roots, 0);
 
-  // Center HSE Lead ODC within his row of siblings - he should sit directly
-  // below HSE GM, not wherever he happened to land in the natural sheet order.
-  levels.forEach(levelNodes => {
-    const odcIdx = levelNodes.findIndex(n => n.Role === 'HSE Lead ODC');
-    if (odcIdx > -1 && levelNodes.length > 1) {
-      const [odc] = levelNodes.splice(odcIdx, 1);
-      levelNodes.splice(Math.floor(levelNodes.length / 2), 0, odc);
-    }
-  });
-
   // When drilled into a Cluster Lead's or Industrial Hygenist's own subtree,
   // their dotted-line "indirect manager" (HSE Lead ODC / Site Leads) usually
   // isn't a literal descendant, so it wouldn't normally be rendered at all -
@@ -873,54 +863,29 @@ function drawConnectors() {
     '<stop offset="0%" stop-color="#21409a"/><stop offset="100%" stop-color="#f58220"/>' +
     '</linearGradient></defs>';
 
-  // style: 'solid' = direct reporting line; 'dotted' = indirect/dotted-line reporting.
-  // Both stay in one layer, tucked behind the cards as before. Routing adapts to
-  // whether the two people are roughly at the same row (common for dotted lines,
-  // e.g. HSE Lead ODC beside a Cluster Lead) vs a genuine vertical parent-child
-  // relationship, so the curve clears neighboring cards cleanly either way
-  // instead of cutting straight through them.
+  // style: 'solid' = direct reporting line (unchanged); 'dotted' = indirect/dotted-line reporting
   function connect(parentId, childId, style) {
     const p = document.getElementById('node-' + parentId);
     const c = document.getElementById('node-' + childId);
     if (!p || !c) return;
     const pr = p.getBoundingClientRect(), cr = c.getBoundingClientRect();
-    const pTop = pr.top - stageRect.top, pBottom = pr.bottom - stageRect.top, pCenterY = pTop + pr.height / 2;
-    const cTop = cr.top - stageRect.top, cBottom = cr.bottom - stageRect.top, cCenterY = cTop + cr.height / 2;
-    const sameRow = Math.abs(pCenterY - cCenterY) < Math.max(pr.height, cr.height) * 0.6;
-
-    let path;
-    if (sameRow) {
-      // Side-to-side curve, dipping below both cards so it never crosses through
-      // anything sitting between them.
-      const pLeft = pr.left - stageRect.left, pRight = pr.right - stageRect.left;
-      const cLeft = cr.left - stageRect.left, cRight = cr.right - stageRect.left;
-      const goingRight = cLeft > pLeft;
-      const x1 = goingRight ? pRight : pLeft;
-      const x2 = goingRight ? cLeft : cRight;
-      const y1 = pBottom - pr.height * 0.15;
-      const y2 = cBottom - cr.height * 0.15;
-      const dipY = Math.max(pBottom, cBottom) + 22;
-      path = 'M ' + x1 + ' ' + y1 + ' C ' + x1 + ' ' + dipY + ', ' + x2 + ' ' + dipY + ', ' + x2 + ' ' + y2;
-    } else {
-      const x1 = pr.left + pr.width/2 - stageRect.left, y1 = pBottom;
-      const x2 = cr.left + cr.width/2 - stageRect.left, y2 = cTop;
-      const midY = (y1 + y2) / 2;
-      path = 'M ' + x1 + ' ' + y1 + ' C ' + x1 + ' ' + midY + ', ' + x2 + ' ' + midY + ', ' + x2 + ' ' + y2;
-    }
-
+    const x1 = pr.left + pr.width/2 - stageRect.left, y1 = pr.bottom - stageRect.top;
+    const x2 = cr.left + cr.width/2 - stageRect.left, y2 = cr.top - stageRect.top;
+    const midY = (y1 + y2) / 2;
+    const path = 'M ' + x1 + ' ' + y1 + ' C ' + x1 + ' ' + midY + ', ' + x2 + ' ' + midY + ', ' + x2 + ' ' + y2;
     const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     pathEl.setAttribute('d', path);
-    pathEl.setAttribute('fill', 'none');
     if (style === 'dotted') {
       pathEl.setAttribute('stroke', '#8891a0');
       pathEl.setAttribute('stroke-width', '1.6');
       pathEl.setAttribute('stroke-dasharray', '5,4');
-      pathEl.setAttribute('opacity', '0.75');
+      pathEl.setAttribute('opacity', '0.65');
     } else {
       pathEl.setAttribute('stroke', 'url(#lineGrad)');
       pathEl.setAttribute('stroke-width', '2');
       pathEl.setAttribute('opacity', '0.55');
     }
+    pathEl.setAttribute('fill', 'none');
     svg.appendChild(pathEl);
   }
 
