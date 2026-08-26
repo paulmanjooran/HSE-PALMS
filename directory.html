@@ -955,6 +955,23 @@ function updateBreadcrumb() {
 function resetFocus() { focusId = null; render(); }
 
 /* ---------------- MATRIX VIEW ---------------- */
+// Organizational seniority order for the People Matrix rows - top to bottom.
+// Any role not listed here falls after all of these, sorted alphabetically
+// among themselves, so a new/custom role never disappears, just sorts last.
+const ROLE_HIERARCHY_ORDER = [
+  'HSE General Manager', 'HSE Lead ODC', 'HSE Manager', 'HSE Cluster Lead',
+  'HSE Site Lead', 'Sr. HSE Advisor', 'HSE Coach', 'Industrial Hygenist', 'HSE Advisor'
+];
+function sortRolesByHierarchy_(roleList) {
+  return roleList.slice().sort((a, b) => {
+    const ai = ROLE_HIERARCHY_ORDER.indexOf(a), bi = ROLE_HIERARCHY_ORDER.indexOf(b);
+    if (ai === -1 && bi === -1) return a.localeCompare(b);
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
+}
+
 function renderMatrix() {
   const host = document.getElementById('matrixWrap');
 
@@ -965,13 +982,13 @@ function renderMatrix() {
       const team = [focusNode, ...(focusNode.children || [])];
       filtered = team.filter(matchesFilters);
       clusters = [...new Set(team.map(p => p.Cluster).filter(Boolean))].sort();
-      roles = [...new Set(team.map(p => p.Role).filter(Boolean))].sort();
+      roles = sortRolesByHierarchy_([...new Set(team.map(p => p.Role).filter(Boolean))]);
     }
   }
   if (!focusNode) {
     filtered = RAW.personnel.filter(matchesFilters);
     clusters = [...new Set(RAW.personnel.map(p => p.cluster).filter(Boolean))].sort();
-    roles = [...new Set(RAW.personnel.map(p => p.role).filter(Boolean))].sort();
+    roles = sortRolesByHierarchy_([...new Set(RAW.personnel.map(p => p.role).filter(Boolean))]);
   }
 
   let html = '<table class="matrix"><thead><tr><th>Role \\\\ Cluster</th>';
