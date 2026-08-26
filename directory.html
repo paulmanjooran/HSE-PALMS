@@ -100,17 +100,14 @@
   .node {
     width: 172px; padding: 16px 14px 14px; border-radius: 16px; text-align: center; cursor: pointer;
     background: rgba(255,255,255,0.95); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    border: 1px solid var(--glass-border); box-shadow: 0 6px 20px rgba(30,40,60,0.10);
-    transition: transform .18s, box-shadow .18s; position: relative; overflow: hidden;
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 14px 34px rgba(30,40,60,0.16), 0 4px 10px rgba(30,40,60,0.08);
+    transition: transform .18s, box-shadow .18s; position: relative;
   }
-  .node::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 46%; border-radius: 16px 16px 60% 60% / 16px 16px 100% 100%;
-    background: linear-gradient(180deg, rgba(255,255,255,0.65), rgba(255,255,255,0)); pointer-events: none;
-  }
-  .node:hover { transform: translateY(-4px) scale(1.03); box-shadow: 0 12px 28px rgba(30,40,60,0.18); z-index: 5; }
+  .node:hover { transform: translateY(-5px) scale(1.03); box-shadow: 0 20px 44px rgba(30,40,60,0.22), 0 6px 14px rgba(30,40,60,0.1); z-index: 5; }
   .node.dimmed { opacity: 0.25; }
-  .node.pending { box-shadow: 0 0 0 2px var(--orange), 0 6px 20px rgba(245,130,32,0.25); }
-  .node.rotation-overdue { box-shadow: 0 0 0 2px #c62828, 0 6px 20px rgba(198,40,40,0.25); }
+  .node.pending { box-shadow: 0 0 0 2px var(--orange), 0 14px 34px rgba(245,130,32,0.22); }
+  .node.rotation-overdue { box-shadow: 0 0 0 2px #c62828, 0 14px 34px rgba(198,40,40,0.22); }
   .node img { width: 76px; height: 76px; border-radius: 50%; object-fit: cover; background: #dfe3e7; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
   .node .name { font-family: 'Manrope'; font-weight: 700; font-size: 12.5px; margin-top: 8px; line-height: 1.25; }
   .node .role { font-size: 10.5px; color: #8891a0; margin-top: 2px; }
