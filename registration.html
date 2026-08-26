@@ -160,6 +160,13 @@
     <label>Shift Type *</label>
     <select id="shiftType" required><option value="">Loading...</option></select>
 
+    <label>Nationality *</label>
+    <select id="nationality" required>
+      <option value="">Select nationality</option>
+      <option value="National">National</option>
+      <option value="Expatriate">Expatriate</option>
+    </select>
+
     <label>Line Manager (Employee ID) *</label>
     <input type="text" id="lineManagerId" required>
 
@@ -240,6 +247,7 @@
       cluster: document.getElementById('cluster').value,
       role: document.getElementById('role').value,
       shiftType: document.getElementById('shiftType').value,
+      nationality: document.getElementById('nationality').value,
       lineManagerId: document.getElementById('lineManagerId').value.trim(),
       lineManagerName: document.getElementById('lineManagerName').value,
       lineManagerEmail: document.getElementById('lineManagerEmail').value,
