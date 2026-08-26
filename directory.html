@@ -783,7 +783,12 @@ function renderTree() {
     }
     levelNodes.forEach(n => {
       const el = buildNodeEl(n, filteredIds, contextNodeIds.has(n.EmployeeID));
-      if (halfLevelIds.has(n.EmployeeID)) el.classList.add('odc-half-level');
+      // HSE Lead ODC always sits half a level above his row-mates (Cluster
+      // Leads, Industrial Hygenists) whenever he appears alongside them as a
+      // peer - both here in the full tree, and in the drilled-down context case.
+      if (halfLevelIds.has(n.EmployeeID) || (n.Role === 'HSE Lead ODC' && depth > 0)) {
+        el.classList.add('odc-half-level');
+      }
       levelDiv.appendChild(el);
     });
     levelsHost.appendChild(levelDiv);
