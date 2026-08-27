@@ -151,8 +151,11 @@
     <label>Email *</label>
     <input type="email" id="email" required>
 
-    <label>Cluster *</label>
+    <label>Cluster/Location *</label>
     <select id="cluster" required><option value="">Loading...</option></select>
+
+    <label>Division *</label>
+    <select id="division" required><option value="">Loading...</option></select>
 
     <label>Role *</label>
     <select id="role" required><option value="">Loading...</option></select>
@@ -198,7 +201,9 @@
     .then(function(res) { return res.json(); })
     .then(function(opts) {
       document.getElementById('cluster').innerHTML =
-        '<option value="">Select cluster</option>' + opts.clusters.map(c => '<option>' + c + '</option>').join('');
+        '<option value="">Select cluster/location</option>' + opts.clusters.map(c => '<option>' + c + '</option>').join('');
+      document.getElementById('division').innerHTML =
+        '<option value="">Select division</option>' + opts.divisions.map(d => '<option>' + d + '</option>').join('');
       document.getElementById('role').innerHTML =
         '<option value="">Select role</option>' + opts.roles.map(r => '<option>' + r + '</option>').join('');
       document.getElementById('shiftType').innerHTML =
@@ -245,6 +250,7 @@
       fullName: document.getElementById('fullName').value,
       email: document.getElementById('email').value,
       cluster: document.getElementById('cluster').value,
+      division: document.getElementById('division').value,
       role: document.getElementById('role').value,
       shiftType: document.getElementById('shiftType').value,
       nationality: document.getElementById('nationality').value,
