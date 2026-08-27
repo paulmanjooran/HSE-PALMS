@@ -18,6 +18,17 @@
     --glass-strong: rgba(255,255,255,0.75);
   }
   * { box-sizing: border-box; }
+  /* Visible, styled scroll/pan bars - default browser scrollbars are thin and
+     easy to miss, especially for the horizontal pan needed on wide content
+     (Team Tree with many siblings, People Matrix with many cluster columns). */
+  ::-webkit-scrollbar { width: 12px; height: 12px; }
+  ::-webkit-scrollbar-track { background: rgba(255,255,255,0.25); border-radius: 8px; }
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, var(--blue), var(--orange)); border-radius: 8px;
+    border: 2px solid rgba(255,255,255,0.4); background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: linear-gradient(135deg, #1a3480, #d96f10); background-clip: padding-box; }
+  * { scrollbar-width: thin; scrollbar-color: var(--blue) rgba(255,255,255,0.25); }
   body {
     margin: 0; min-height: 100vh; font-family: 'Inter', sans-serif; color: var(--dark);
     background:
@@ -81,10 +92,16 @@
   #breadcrumb.show { display: flex; }
   #breadcrumb a { color: var(--blue); cursor: pointer; font-weight: 600; text-decoration: none; }
 
-  #stage { padding: 28px 24px 80px; position: relative; }
+  #stage {
+    padding: 28px 24px 80px; position: relative; min-height: 160vh;
+    overflow-x: auto; overflow-y: visible;
+  }
 
   /* ---------- tree ---------- */
-  #treeCanvas { position: relative; overflow-x: auto; padding-bottom: 40px; }
+  #treeCanvas {
+    position: relative; overflow-x: auto; overflow-y: visible; padding-bottom: 40px;
+    min-height: 150vh; min-width: 100%;
+  }
   svg#connectors { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
   .tree-level { display: flex; justify-content: center; gap: 36px; margin-bottom: 64px; position: relative; z-index: 2; flex-wrap: wrap; }
   .tree-level.context-level { margin-bottom: 34px; }
@@ -130,9 +147,9 @@
   .eye-btn:hover { background: #fff; transform: scale(1.08); }
 
   /* ---------- matrix ---------- */
-  #matrixWrap { display: none; }
+  #matrixWrap { display: none; min-height: 140vh; overflow-x: auto; padding-bottom: 40px; }
   #matrixWrap.show { display: block; }
-  #summaryWrap { display: none; }
+  #summaryWrap { display: none; min-height: 140vh; padding-bottom: 40px; }
   #summaryWrap.show { display: block; }
   .summary-cluster { margin-bottom: 22px; }
   .workforce-summary { margin-bottom: 30px; }
