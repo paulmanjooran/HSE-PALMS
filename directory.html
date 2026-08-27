@@ -411,7 +411,7 @@
 </div>
 
 <div id="filterbar">
-  <span class="filter-label">Cluster</span>
+  <span class="filter-label">Cluster/Location</span>
   <div id="clusterChips"></div>
   <span class="filter-label">Role</span>
   <select id="roleFilter" onchange="applyFilters()" style="padding:6px 10px;border-radius:20px;border:1px solid rgba(0,0,0,0.08);font-size:12px;background:rgba(255,255,255,0.7);">
@@ -477,9 +477,12 @@
     <label>Email</label>
     <input type="email" id="editEmail">
 
-    <label>Cluster</label>
+    <label>Cluster/Location</label>
     <input type="text" id="editCluster" class="locked" disabled>
-    <div class="lock-note">Cluster changes go through "Initiate Transfer" (button above) so the competency check and approval flow run - not editable here.</div>
+    <div class="lock-note">Cluster/Location changes go through "Initiate Transfer" (button above) so the approval flow runs - not editable here.</div>
+
+    <label>Division</label>
+    <select id="editDivision"><option value="">Not set</option></select>
 
     <label>Role</label>
     <select id="editRole"></select>
@@ -511,7 +514,7 @@
   </div>
 
   <div id="popTransferMode" style="display:none;">
-    <label style="margin-top:0;">Current Cluster</label>
+    <label style="margin-top:0;">Current Cluster/Location</label>
     <input type="text" id="transferFromCluster" class="locked" disabled>
 
     <label>Transfer To</label>
@@ -521,9 +524,8 @@
     <input type="date" id="transferEffectiveDate">
 
     <div class="lock-note" style="margin-top:10px;">
-      Runs the competency check for the destination cluster, then sends an approval card to
-      the HSE General Manager, HSE Manager, and HSE Lead. All three must approve before the
-      cluster actually changes.
+      Sends an approval card to the HSE General Manager, HSE Manager, and HSE Lead.
+      All three must approve before the cluster/location actually changes.
     </div>
 
     <div class="edit-btn-row">
@@ -642,7 +644,12 @@ function renderSummary() {
 
   const clusterBreakdown = clusters.map(cluster => {
     const members = filtered.filter(p => p.cluster === cluster)
-      .sort((a, b) => (a.role || '').localeCompare(b.role || '') || (a.name || '').localeCompare(b.name || ''));
+      .sort((a, b) => {
+        const ai = ROLE_HIERARCHY_ORDER.indexOf(a.role), bi = ROLE_HIERARCHY_ORDER.indexOf(b.role);
+        const aRank = ai === -1 ? ROLE_HIERARCHY_ORDER.length : ai;
+        const bRank = bi === -1 ? ROLE_HIERARCHY_ORDER.length : bi;
+        return aRank - bRank || (a.role || '').localeCompare(b.role || '') || (a.name || '').localeCompare(b.name || '');
+      });
 
     if (!members.length) return '';
 
@@ -1236,6 +1243,7 @@ function enterEditMode() {
       ensureFormOptions(function(opts) {
         document.getElementById('editRole').innerHTML = opts.roles.map(r => '<option' + (r === person.Role ? ' selected' : '') + '>' + r + '</option>').join('');
         document.getElementById('editShiftType').innerHTML = opts.shifts.map(s => '<option' + (s === person.ShiftType ? ' selected' : '') + '>' + s + '</option>').join('');
+        document.getElementById('editDivision').innerHTML = '<option value="">Not set</option>' + opts.divisions.map(d => '<option' + (d === person.Division ? ' selected' : '') + '>' + d + '</option>').join('');
       });
 
       document.getElementById('editPhotoPreview').src = person.photoUrl || placeholderImg();
@@ -1308,11 +1316,6 @@ function submitTransfer() {
   serverGet('initiateTransferGet', payload)
     .then(function(result) {
       if (!result.success) { status.className = 'err'; status.textContent = 'Error: ' + result.error; return; }
-      if (!result.competencyPass) {
-        status.className = 'err';
-        status.textContent = 'Blocked - missing/expired: ' + result.missingCerts.join(', ') + '. Not sent for approval.';
-        return;
-      }
       status.className = 'ok';
       status.textContent = 'Sent for approval to HSE GM, HSE Manager, and HSE Lead.';
       setTimeout(function() { closePopup(); loadData(); }, 1400);
@@ -1343,6 +1346,7 @@ function saveProfile() {
     role: document.getElementById('editRole').value,
     shiftType: document.getElementById('editShiftType').value,
     nationality: document.getElementById('editNationality').value,
+    division: document.getElementById('editDivision').value,
     lineManagerId: document.getElementById('editLineManagerId').value.trim(),
     lineManagerName: document.getElementById('editLineManagerName').value,
     lineManagerEmail: document.getElementById('editLineManagerEmail').value,
