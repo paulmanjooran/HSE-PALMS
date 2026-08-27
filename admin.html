@@ -264,13 +264,18 @@
 
     <div class="panel">
       <h2>Registration Dropdown Options</h2>
-      <div style="font-size:11.5px;color:#8891a0;margin-bottom:10px;">One value per line. Controls the Cluster/Role/Shift dropdowns on Team Registration, the HSE Team Directory filters, and the Transfer destination list.</div>
+      <div style="font-size:11.5px;color:#8891a0;margin-bottom:10px;">One value per line. Controls the Cluster/Location, Division, Role, and Shift dropdowns on Team Registration, the HSE Team Directory filters, and the Transfer destination list.</div>
 
-      <label style="display:block;font-size:10.5px;font-weight:700;color:#8891a0;text-transform:uppercase;margin-top:8px;">Clusters</label>
-      <div style="font-size:10.5px;color:#c62828;margin:3px 0;">⚠ Editing this does NOT update which clusters require H2S certification, or which are exempt from the 2-year rotation rule - those live in the Office/Non-Field Clusters list below.</div>
+      <label style="display:block;font-size:10.5px;font-weight:700;color:#8891a0;text-transform:uppercase;margin-top:8px;">Clusters/Locations</label>
       <textarea id="ddClusters" rows="6" style="width:100%;padding:8px;border-radius:6px;border:1px solid #dfe3e7;font-size:12px;font-family:monospace;margin-top:4px;"></textarea>
       <div class="btn-row" style="margin-top:6px;">
         <button class="btn btn-ghost" onclick="resetDropdown('clusters')" style="font-size:11px;padding:5px 10px;">Reset to Default</button>
+      </div>
+
+      <label style="display:block;font-size:10.5px;font-weight:700;color:#8891a0;text-transform:uppercase;margin-top:16px;">Divisions</label>
+      <textarea id="ddDivisions" rows="6" style="width:100%;padding:8px;border-radius:6px;border:1px solid #dfe3e7;font-size:12px;font-family:monospace;margin-top:4px;"></textarea>
+      <div class="btn-row" style="margin-top:6px;">
+        <button class="btn btn-ghost" onclick="resetDropdown('divisions')" style="font-size:11px;padding:5px 10px;">Reset to Default</button>
       </div>
 
       <label style="display:block;font-size:10.5px;font-weight:700;color:#8891a0;text-transform:uppercase;margin-top:16px;">Roles</label>
@@ -286,7 +291,7 @@
       </div>
 
       <label style="display:block;font-size:10.5px;font-weight:700;color:#8891a0;text-transform:uppercase;margin-top:16px;">Office / Non-Field Clusters</label>
-      <div style="font-size:10.5px;color:#8891a0;margin:3px 0;">Clusters listed here are automatically exempt from BOTH the H2S competency requirement and the 2-year rotation rule. Every other cluster automatically requires H2S - no separate mapping to maintain.</div>
+      <div style="font-size:10.5px;color:#8891a0;margin:3px 0;">Clusters/locations listed here are exempt from the 2-year rotation rule.</div>
       <textarea id="ddOfficeClusters" rows="2" style="width:100%;padding:8px;border-radius:6px;border:1px solid #dfe3e7;font-size:12px;font-family:monospace;margin-top:4px;"></textarea>
       <div class="btn-row" style="margin-top:6px;">
         <button class="btn btn-ghost" onclick="resetDropdown('office_clusters')" style="font-size:11px;padding:5px 10px;">Reset to Default</button>
@@ -641,6 +646,7 @@ function saveApprovers() {
 function loadDropdownOptions() {
   adminGet('dropdownOptions').then(function(opts) {
     document.getElementById('ddClusters').value = opts.clusters.join('\n');
+    document.getElementById('ddDivisions').value = opts.divisions.join('\n');
     document.getElementById('ddRoles').value = opts.roles.join('\n');
     document.getElementById('ddShifts').value = opts.shifts.join('\n');
     document.getElementById('ddOfficeClusters').value = opts.officeClusters.join('\n');
@@ -655,6 +661,7 @@ function saveDropdowns() {
     el.textContent = 'Saving...';
     const payload = {
       clusters: document.getElementById('ddClusters').value,
+      divisions: document.getElementById('ddDivisions').value,
       roles: document.getElementById('ddRoles').value,
       shifts: document.getElementById('ddShifts').value,
       officeClusters: document.getElementById('ddOfficeClusters').value
