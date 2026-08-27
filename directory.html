@@ -89,6 +89,26 @@
   }
   #resetFiltersBtn:hover { background: rgba(198,40,40,0.15); }
   #breadcrumb { padding: 8px 24px; font-size: 12.5px; color: #8891a0; display: none; align-items: center; gap: 6px; }
+
+  #treeLegend {
+    position: fixed; top: 130px; right: 20px; z-index: 25; display: none;
+    background: rgba(255,255,255,0.55); backdrop-filter: blur(22px) saturate(1.6); -webkit-backdrop-filter: blur(22px) saturate(1.6);
+    border: 1px solid var(--glass-border); border-radius: 14px; padding: 14px 16px;
+    box-shadow: 0 10px 28px rgba(30,40,60,0.14); min-width: 168px;
+  }
+  #treeLegend.show { display: block; }
+  #treeLegend .legend-title {
+    font-family: 'Manrope'; font-weight: 800; font-size: 11px; text-transform: uppercase;
+    letter-spacing: .04em; color: #8891a0; margin-bottom: 10px;
+  }
+  #treeLegend .legend-row {
+    display: flex; align-items: center; gap: 9px; font-size: 12px; font-weight: 600; color: var(--dark);
+    padding: 5px 0;
+  }
+  #treeLegend .legend-swatch { width: 24px; height: 0; border-top-width: 2.5px; border-top-style: solid; flex-shrink: 0; }
+  #treeLegend .legend-swatch.solid { border-top-color: var(--blue); }
+  #treeLegend .legend-swatch.dotted { border-top-color: #8891a0; border-top-style: dashed; }
+  #treeLegend .legend-icon { width: 24px; text-align: center; font-size: 13px; flex-shrink: 0; }
   #breadcrumb.show { display: flex; }
   #breadcrumb a { color: var(--blue); cursor: pointer; font-weight: 600; text-decoration: none; }
 
@@ -104,10 +124,6 @@
   svg#connectors { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
   .tree-level { display: flex; justify-content: center; gap: 36px; margin-bottom: 64px; position: relative; z-index: 2; flex-wrap: wrap; }
   .tree-level.context-level { margin-bottom: 34px; }
-  .context-level-label {
-    position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: 700;
-    color: #8891a0; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap;
-  }
   .node.context-node { opacity: 0.6; border: 1px dashed #8891a0; }
   .tree-branch.odc-half-level .node { margin-top: -46px; }
   .node.context-node:hover { opacity: 1; }
@@ -462,6 +478,14 @@
   <div id="summaryWrap"></div>
 </div>
 
+<div id="treeLegend">
+  <div class="legend-title">Legend</div>
+  <div class="legend-row"><span class="legend-swatch solid"></span> Direct reporting</div>
+  <div class="legend-row"><span class="legend-swatch dotted"></span> Indirect reporting</div>
+  <div class="legend-row"><span class="legend-icon">👁️</span> View profile</div>
+  <div class="legend-row"><span class="legend-icon">🌳</span> View this person's team</div>
+</div>
+
 <div id="overlay" onclick="closePopup()"></div>
 <div id="popup">
   <div class="pop-toolbar">
@@ -572,6 +596,7 @@ function setView(v) {
   document.getElementById('treeCanvas').style.display = v === 'tree' ? 'block' : 'none';
   document.getElementById('matrixWrap').classList.toggle('show', v === 'matrix');
   document.getElementById('summaryWrap').classList.toggle('show', v === 'summary');
+  document.getElementById('treeLegend').classList.toggle('show', v === 'tree');
   render();
 }
 
@@ -838,7 +863,6 @@ function renderTree() {
   // reporting line stays visible even zoomed in.
   let contextNodeIds = new Set();
   let halfLevelIds = new Set();
-  let dottedContextIds = new Set();
   solidContextConnections = [];
   if (focusId) {
     const subtreeNodes = flattenTree_(roots);
@@ -858,7 +882,6 @@ function renderTree() {
         // left side of the focused person, not sitting between them and HSE GM.
         levels[0] = contextNodes.concat(levels[0] || []);
         contextNodeIds = new Set(contextNodes.map(n => n.EmployeeID));
-        dottedContextIds = new Set(contextNodeIds);
         // HSE Lead ODC specifically sits half a level below HSE GM - staggered
         // between the two rows, not fully aligned with either.
         contextNodes.filter(n => n.Role === 'HSE Lead ODC').forEach(n => halfLevelIds.add(n.EmployeeID));
@@ -890,7 +913,7 @@ function renderTree() {
       );
       if (dottedChildren.length) {
         levels[1] = (levels[1] || []).concat(dottedChildren);
-        dottedChildren.forEach(n => { contextNodeIds.add(n.EmployeeID); dottedContextIds.add(n.EmployeeID); });
+        dottedChildren.forEach(n => contextNodeIds.add(n.EmployeeID));
       }
     }
   }
@@ -899,13 +922,6 @@ function renderTree() {
     const levelDiv = document.createElement('div');
     levelDiv.className = 'tree-level';
     levelDiv.dataset.depth = depth;
-    const dottedNodesInLevel = levelNodes.filter(n => dottedContextIds.has(n.EmployeeID));
-    if (dottedNodesInLevel.length) {
-      const label = document.createElement('div');
-      label.className = 'context-level-label';
-      label.textContent = 'Indirect reporting line (dotted)';
-      levelDiv.appendChild(label);
-    }
     levelNodes.forEach(n => {
       const el = buildNodeEl(n, filteredIds, contextNodeIds.has(n.EmployeeID));
       // HSE Lead ODC always sits half a level above his row-mates (Cluster
