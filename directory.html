@@ -93,14 +93,13 @@
   #breadcrumb a { color: var(--blue); cursor: pointer; font-weight: 600; text-decoration: none; }
 
   #stage {
-    padding: 28px 24px 80px; position: relative; min-height: 160vh;
-    overflow-x: auto; overflow-y: visible;
+    padding: 28px 24px 80px; position: relative;
+    overflow-x: auto;
   }
 
   /* ---------- tree ---------- */
   #treeCanvas {
-    position: relative; overflow-x: auto; overflow-y: visible; padding-bottom: 40px;
-    min-height: 150vh; min-width: 100%;
+    position: relative; overflow-x: auto; padding-bottom: 40px; min-width: 100%;
   }
   svg#connectors { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
   .tree-level { display: flex; justify-content: center; gap: 36px; margin-bottom: 64px; position: relative; z-index: 2; flex-wrap: wrap; }
@@ -147,9 +146,9 @@
   .eye-btn:hover { background: #fff; transform: scale(1.08); }
 
   /* ---------- matrix ---------- */
-  #matrixWrap { display: none; min-height: 140vh; overflow-x: auto; padding-bottom: 40px; }
+  #matrixWrap { display: none; overflow-x: auto; padding-bottom: 40px; }
   #matrixWrap.show { display: block; }
-  #summaryWrap { display: none; min-height: 140vh; padding-bottom: 40px; }
+  #summaryWrap { display: none; padding-bottom: 40px; }
   #summaryWrap.show { display: block; }
   .summary-cluster { margin-bottom: 22px; }
   .workforce-summary { margin-bottom: 30px; }
