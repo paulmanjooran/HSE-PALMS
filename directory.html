@@ -1027,7 +1027,14 @@ function buildNodeEl(n, filteredIds, isContext) {
 function drawConnectors() {
   const svg = document.getElementById('connectors');
   const stage = document.getElementById('treeCanvas');
-  const stageRect = stage.getBoundingClientRect();
+  // Reference point is the SCALED wrapper's own post-transform bounding rect, not
+  // the outer unscaled #treeCanvas. This matters because transform-origin is
+  // "top center", not the top-left corner - using an outer, differently-anchored
+  // ancestor as the reference point introduced a systematic offset that grew
+  // with zoom level, causing lines to visibly drift away from their cards.
+  // A scaled element's own rect always correctly reflects where the transform
+  // actually anchored it, regardless of transform-origin, so this is robust.
+  const wrapperRect = document.getElementById('zoomWrapper').getBoundingClientRect();
   svg.setAttribute('width', stage.scrollWidth);
   svg.setAttribute('height', stage.scrollHeight);
   svg.innerHTML =
@@ -1035,7 +1042,7 @@ function drawConnectors() {
     '<stop offset="0%" stop-color="#21409a"/><stop offset="100%" stop-color="#f58220"/>' +
     '</linearGradient></defs>';
 
-  // style: 'solid' = direct reporting line (unchanged); 'dotted' = indirect/dotted-line reporting.
+  // style: 'solid' = direct reporting line; 'dotted' = indirect/dotted-line reporting.
   // Coordinates are divided by treeZoom: getBoundingClientRect() returns already-
   // scaled screen pixels, but this SVG is itself a child of the scaled #zoomWrapper,
   // so its own coordinates get scaled again on render - dividing here cancels that
@@ -1045,8 +1052,8 @@ function drawConnectors() {
     const c = document.getElementById('node-' + childId);
     if (!p || !c) return;
     const pr = p.getBoundingClientRect(), cr = c.getBoundingClientRect();
-    const x1 = (pr.left + pr.width/2 - stageRect.left) / treeZoom, y1 = (pr.bottom - stageRect.top) / treeZoom;
-    const x2 = (cr.left + cr.width/2 - stageRect.left) / treeZoom, y2 = (cr.top - stageRect.top) / treeZoom;
+    const x1 = (pr.left + pr.width/2 - wrapperRect.left) / treeZoom, y1 = (pr.bottom - wrapperRect.top) / treeZoom;
+    const x2 = (cr.left + cr.width/2 - wrapperRect.left) / treeZoom, y2 = (cr.top - wrapperRect.top) / treeZoom;
     const midY = (y1 + y2) / 2;
     const path = 'M ' + x1 + ' ' + y1 + ' C ' + x1 + ' ' + midY + ', ' + x2 + ' ' + midY + ', ' + x2 + ' ' + y2;
     const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
