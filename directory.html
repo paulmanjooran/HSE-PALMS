@@ -937,7 +937,7 @@ function renderTree() {
     if (roots.length === 1 && roots[0].Role === 'HSE Lead ODC') {
       const alreadyVisibleIds2 = new Set(subtreeNodes.map(n => n.EmployeeID));
       const dottedChildren = flattenTree_(RAW.organogram).filter(n =>
-        (n.Role === 'HSE Cluster Lead' || n.Role === 'HSE Site Lead') && !alreadyVisibleIds2.has(n.EmployeeID)
+        (n.Role === 'HSE Cluster Lead' || n.Role === 'HSE Site Lead' || n.Role === 'Industrial Hygenist') && !alreadyVisibleIds2.has(n.EmployeeID)
       );
       if (dottedChildren.length) {
         levels[1] = (levels[1] || []).concat(dottedChildren);
