@@ -887,6 +887,21 @@ function renderTree() {
   }
   walk(roots, 0);
 
+  // HSE Lead ODC always renders above Cluster/Site HSE Leads, in every view -
+  // including the plain full-tree view, where structurally they're all just
+  // direct reports to HSE GM at the same depth. Split him into his own row
+  // whenever he'd otherwise land as a sibling of a Cluster/Site Lead, visually
+  // reflecting the indirect oversight hierarchy even in the un-drilled overview.
+  for (let i = 0; i < levels.length; i++) {
+    const odcHere = levels[i].filter(n => n.Role === 'HSE Lead ODC');
+    const hasClusterOrSitePeer = levels[i].some(n => n.Role === 'HSE Cluster Lead' || n.Role === 'HSE Site Lead');
+    if (odcHere.length && hasClusterOrSitePeer) {
+      levels[i] = levels[i].filter(n => n.Role !== 'HSE Lead ODC');
+      levels.splice(i, 0, odcHere);
+      i++; // skip past the row we just inserted, don't reprocess it
+    }
+  }
+
   // When drilled into a Cluster Lead's or Industrial Hygenist's own subtree,
   // their dotted-line "indirect manager" (HSE Lead ODC / Site Leads) usually
   // isn't a literal descendant, so it wouldn't normally be rendered at all -
@@ -898,11 +913,12 @@ function renderTree() {
   solidContextConnections = [];
   if (focusId) {
     const subtreeNodes = flattenTree_(roots);
-    const hasClusterLead = subtreeNodes.some(n => n.Role === 'HSE Cluster Lead' || n.Role === 'HSE Site Lead');
-    const hasIndustrialHygenist = subtreeNodes.some(n => n.Role === 'Industrial Hygenist');
-    const lastLevelIdx = () => levels.length - 1;
 
-    if (hasClusterLead || hasIndustrialHygenist) {
+    // HSE Lead ODC and HSE GM must always appear together, in every
+    // circumstance - not just when drilled into a Cluster/Site Lead or
+    // Industrial Hygenist. Whoever is focused on, if HSE Lead ODC isn't
+    // already visible in their subtree, show him as context.
+    if (roots.length === 1 && roots[0].Role !== 'HSE Lead ODC') {
       const allNodes = flattenTree_(RAW.organogram);
       const alreadyVisibleIds = new Set(subtreeNodes.map(n => n.EmployeeID));
       const contextNodes = allNodes.filter(n =>
@@ -956,10 +972,11 @@ function renderTree() {
     levelDiv.dataset.depth = depth;
     levelNodes.forEach(n => {
       const el = buildNodeEl(n, filteredIds, contextNodeIds.has(n.EmployeeID));
-      // HSE Lead ODC always sits half a level above his row-mates (Cluster
-      // Leads, Industrial Hygenists) whenever he appears alongside them as a
-      // peer - both here in the full tree, and in the drilled-down context case.
-      if (halfLevelIds.has(n.EmployeeID) || (n.Role === 'HSE Lead ODC' && depth > 0)) {
+      // HSE Lead ODC sits half a level above whoever he's sharing a row with -
+      // only applies in the drilled-down context case now, since the full tree
+      // view gives him a genuinely separate row via the split above, not a
+      // shared one needing this compensating shift.
+      if (halfLevelIds.has(n.EmployeeID)) {
         el.classList.add('odc-half-level');
       }
       levelDiv.appendChild(el);
