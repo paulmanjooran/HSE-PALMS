@@ -52,6 +52,16 @@
   #topbar h1 { font-size: 19px; font-weight: 800; margin: 0; letter-spacing: -0.3px; }
   #topbar .tagline { font-size: 11px; color: #8891a0; font-weight: 500; margin-top: 1px; }
   .view-toggle { display: flex; background: rgba(255,255,255,0.6); border-radius: 10px; padding: 3px; gap: 2px; }
+  #zoomControls { display: none; align-items: center; padding: 3px 8px; gap: 6px; }
+  #zoomControls.show { display: flex; }
+  #zoomControls .btn-icon {
+    border: none; background: rgba(255,255,255,0.7); width: 26px; height: 26px; border-radius: 7px;
+    font-family: 'Manrope'; font-weight: 800; font-size: 15px; cursor: pointer; color: var(--dark);
+    display: flex; align-items: center; justify-content: center;
+  }
+  #zoomControls .btn-icon:hover { background: #fff; }
+  #zoomLevelLabel { font-size: 11.5px; font-weight: 700; color: var(--dark); min-width: 36px; text-align: center; }
+  #zoomWrapper { position: relative; transform-origin: top center; transition: transform .15s; display: inline-block; min-width: 100%; }
   .view-toggle button {
     border: none; background: transparent; padding: 7px 16px; font-family: 'Manrope'; font-weight: 700;
     font-size: 12.5px; border-radius: 8px; cursor: pointer; color: var(--dark); transition: all .2s;
@@ -436,6 +446,12 @@
       <button id="btnMatrixView" onclick="setView('matrix')">People Matrix</button>
       <button id="btnSummaryView" onclick="setView('summary')">Cluster Summary</button>
     </div>
+    <div id="zoomControls" class="view-toggle">
+      <button class="btn-icon" title="Zoom out" onclick="zoomTree(-0.1)">&minus;</button>
+      <span id="zoomLevelLabel">100%</span>
+      <button class="btn-icon" title="Zoom in" onclick="zoomTree(0.1)">+</button>
+      <button class="btn-icon" title="Reset zoom" onclick="zoomTree(0)" style="font-size:11px;">Reset</button>
+    </div>
     <button class="btn btn-ghost btn-icon" title="Refresh data" onclick="loadData()">↻</button>
     <button class="btn btn-ghost btn-icon" title="Screenshot this view" onclick="screenshotEl('stage','workforce-view')">📷</button>
     <button class="btn btn-primary" onclick="downloadA3()">⬇ A3 Master PDF</button>
@@ -469,8 +485,10 @@
   <div id="emptyMsg">No personnel match the current filters.</div>
 
   <div id="treeCanvas">
-    <svg id="connectors"></svg>
-    <div id="treeLevels"></div>
+    <div id="zoomWrapper">
+      <svg id="connectors"></svg>
+      <div id="treeLevels"></div>
+    </div>
   </div>
 
   <div id="matrixWrap"></div>
@@ -584,6 +602,17 @@
 const BASE_URL = "https://script.google.com/macros/s/AKfycbxY_ju_CjS-6vBox8XZ7dJe9KtHXpBcSEBSABxmrS1IGAfcd5O10qwJTEN3JfskehJX/exec";
 let RAW = { personnel: [], organogram: [], leave: [] };
 let currentView = 'tree';
+let treeZoom = 1;
+
+function zoomTree(delta) {
+  treeZoom = delta === 0 ? 1 : Math.min(2, Math.max(0.4, treeZoom + delta));
+  const wrapper = document.getElementById('zoomWrapper');
+  wrapper.style.transform = 'scale(' + treeZoom + ')';
+  document.getElementById('zoomLevelLabel').textContent = Math.round(treeZoom * 100) + '%';
+  // Redraw connector lines after the transform settles - getBoundingClientRect()
+  // already reflects the new scaled positions correctly, but needs a frame to update.
+  requestAnimationFrame(() => requestAnimationFrame(drawConnectors));
+}
 let focusId = null; // employeeId currently drilled into, null = root view
 let solidContextConnections = []; // [managerId, rootId] pairs needing a solid line even though the manager is only a context node, not a rendered ancestor
 let activeClusters = new Set();
@@ -597,6 +626,7 @@ function setView(v) {
   document.getElementById('matrixWrap').classList.toggle('show', v === 'matrix');
   document.getElementById('summaryWrap').classList.toggle('show', v === 'summary');
   document.getElementById('treeLegend').classList.toggle('hide', v !== 'tree');
+  document.getElementById('zoomControls').classList.toggle('show', v === 'tree');
   const searchBox = document.getElementById('searchBox');
   searchBox.style.display = v === 'summary' ? 'none' : '';
   if (v === 'summary' && searchBox.value) searchBox.value = '';
@@ -1007,14 +1037,18 @@ function drawConnectors() {
     '<stop offset="0%" stop-color="#21409a"/><stop offset="100%" stop-color="#f58220"/>' +
     '</linearGradient></defs>';
 
-  // style: 'solid' = direct reporting line (unchanged); 'dotted' = indirect/dotted-line reporting
+  // style: 'solid' = direct reporting line (unchanged); 'dotted' = indirect/dotted-line reporting.
+  // Coordinates are divided by treeZoom: getBoundingClientRect() returns already-
+  // scaled screen pixels, but this SVG is itself a child of the scaled #zoomWrapper,
+  // so its own coordinates get scaled again on render - dividing here cancels that
+  // out, so lines land in the right place at every zoom level instead of drifting.
   function connect(parentId, childId, style) {
     const p = document.getElementById('node-' + parentId);
     const c = document.getElementById('node-' + childId);
     if (!p || !c) return;
     const pr = p.getBoundingClientRect(), cr = c.getBoundingClientRect();
-    const x1 = pr.left + pr.width/2 - stageRect.left, y1 = pr.bottom - stageRect.top;
-    const x2 = cr.left + cr.width/2 - stageRect.left, y2 = cr.top - stageRect.top;
+    const x1 = (pr.left + pr.width/2 - stageRect.left) / treeZoom, y1 = (pr.bottom - stageRect.top) / treeZoom;
+    const x2 = (cr.left + cr.width/2 - stageRect.left) / treeZoom, y2 = (cr.top - stageRect.top) / treeZoom;
     const midY = (y1 + y2) / 2;
     const path = 'M ' + x1 + ' ' + y1 + ' C ' + x1 + ' ' + midY + ', ' + x2 + ' ' + midY + ', ' + x2 + ' ' + y2;
     const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
