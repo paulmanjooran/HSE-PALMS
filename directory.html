@@ -52,8 +52,8 @@
   #topbar h1 { font-size: 19px; font-weight: 800; margin: 0; letter-spacing: -0.3px; }
   #topbar .tagline { font-size: 11px; color: #8891a0; font-weight: 500; margin-top: 1px; }
   .view-toggle { display: flex; background: rgba(255,255,255,0.6); border-radius: 10px; padding: 3px; gap: 2px; }
-  #zoomControls { display: none; align-items: center; padding: 3px 8px; gap: 6px; }
-  #zoomControls.show { display: flex; }
+  #zoomControls { display: flex; align-items: center; padding: 3px 8px; gap: 6px; }
+  #zoomControls.hide { display: none; }
   #zoomControls .btn-icon {
     border: none; background: rgba(255,255,255,0.7); width: 26px; height: 26px; border-radius: 7px;
     font-family: 'Manrope'; font-weight: 800; font-size: 15px; cursor: pointer; color: var(--dark);
@@ -626,7 +626,7 @@ function setView(v) {
   document.getElementById('matrixWrap').classList.toggle('show', v === 'matrix');
   document.getElementById('summaryWrap').classList.toggle('show', v === 'summary');
   document.getElementById('treeLegend').classList.toggle('hide', v !== 'tree');
-  document.getElementById('zoomControls').classList.toggle('show', v === 'tree');
+  document.getElementById('zoomControls').classList.toggle('hide', v !== 'tree');
   const searchBox = document.getElementById('searchBox');
   searchBox.style.display = v === 'summary' ? 'none' : '';
   if (v === 'summary' && searchBox.value) searchBox.value = '';
