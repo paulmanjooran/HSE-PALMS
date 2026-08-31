@@ -160,6 +160,10 @@
     position: absolute; top: -8px; right: -8px; background: var(--dark); color: #fff; font-size: 10px; font-weight: 700;
     border-radius: 10px; padding: 2px 7px; box-shadow: 0 2px 6px rgba(0,0,0,0.25);
   }
+  .node.compact-node { width: 128px; padding: 11px 9px 9px; }
+  .node.compact-node img { width: 52px; height: 52px; }
+  .node.compact-node .name { font-size: 11px; margin-top: 6px; }
+  .node.compact-node .role { font-size: 9px; }
   .manager-badge {
     display: inline-flex; align-items: center; gap: 3px; font-size: 9px; font-weight: 700; color: #2e7d32;
     background: rgba(46,125,50,0.12); padding: 2px 7px; border-radius: 8px; margin-top: 4px; cursor: pointer;
@@ -878,7 +882,7 @@ function renderTree() {
   const levels = [];
   function walk(nodes, depth) {
     if (!nodes.length) return;
-    levels[depth] = (levels[depth] || []).concat(nodes);
+    levels[depth] = (levels[depth] || []).concat(groupShiftPartners_(nodes));
     nodes.forEach(n => walk(n.children || [], depth + 1));
   }
   walk(roots, 0);
@@ -894,7 +898,7 @@ function renderTree() {
   solidContextConnections = [];
   if (focusId) {
     const subtreeNodes = flattenTree_(roots);
-    const hasClusterLead = subtreeNodes.some(n => n.Role === 'HSE Cluster Lead');
+    const hasClusterLead = subtreeNodes.some(n => n.Role === 'HSE Cluster Lead' || n.Role === 'HSE Site Lead');
     const hasIndustrialHygenist = subtreeNodes.some(n => n.Role === 'Industrial Hygenist');
     const lastLevelIdx = () => levels.length - 1;
 
@@ -902,7 +906,7 @@ function renderTree() {
       const allNodes = flattenTree_(RAW.organogram);
       const alreadyVisibleIds = new Set(subtreeNodes.map(n => n.EmployeeID));
       const contextNodes = allNodes.filter(n =>
-        (n.Role === 'HSE Lead ODC' || (hasClusterLead && n.Role === 'HSE Site Lead')) && !alreadyVisibleIds.has(n.EmployeeID)
+        n.Role === 'HSE Lead ODC' && !alreadyVisibleIds.has(n.EmployeeID)
       );
       if (contextNodes.length) {
         // Placed beside the focused root (same row, to the left) rather than
@@ -984,6 +988,7 @@ function buildNodeEl(n, filteredIds, isContext) {
   const el = document.createElement('div');
   el.className = 'node';
   if (isContext) el.classList.add('context-node');
+  if (n.Role === 'HSE Site Lead') el.classList.add('compact-node');
   if (filteredIds.size && !filteredIds.has(n.EmployeeID)) el.classList.add('dimmed');
   if (n.TransferStatus === 'Pending Transfer') el.classList.add('pending');
   if (n.RotationStatus === 'overdue') el.classList.add('rotation-overdue');
@@ -1128,6 +1133,25 @@ function flattenTree_(nodes) {
   return out;
 }
 
+// Reorders one sibling group (children of the same manager) so that a Back to
+// Back Shift Partner pair sits directly next to each other, instead of wherever
+// they happened to land in natural sheet order. Only reorders WITHIN this one
+// group - doesn't touch which parent each child belongs to.
+function groupShiftPartners_(siblings) {
+  const result = [];
+  const placed = new Set();
+  siblings.forEach(n => {
+    if (placed.has(n.EmployeeID)) return;
+    result.push(n);
+    placed.add(n.EmployeeID);
+    if (n.ShiftPartnerID) {
+      const partner = siblings.find(s => s.EmployeeID === n.ShiftPartnerID && !placed.has(s.EmployeeID));
+      if (partner) { result.push(partner); placed.add(partner.EmployeeID); }
+    }
+  });
+  return result;
+}
+
 // Dotted-line (indirect) reporting: every HSE Cluster Lead gets an additional
 // dashed connector to the HSE Lead ODC and to every HSE Site Lead - on top of
 // their existing solid direct-reporting line to their actual line manager.
@@ -1138,26 +1162,20 @@ function drawIndirectConnectors_(connect) {
   const siteLeads = all.filter(n => n.Role === 'HSE Site Lead');
   const industrialHygenists = all.filter(n => n.Role === 'Industrial Hygenist');
 
+  // Every Cluster HSE Lead and Site HSE Lead reports indirectly (dotted) to
+  // HSE Lead ODC only - no cross-connections between Cluster and Site Leads.
   clusterLeads.forEach(lead => {
     if (hseLeadOdc && hseLeadOdc.EmployeeID !== lead.ReportsToID) {
       connect(hseLeadOdc.EmployeeID, lead.EmployeeID, 'dotted');
     }
-    siteLeads.forEach(site => {
-      if (site.EmployeeID !== lead.ReportsToID) {
-        connect(site.EmployeeID, lead.EmployeeID, 'dotted');
-      }
-    });
   });
-
-  // Every Site HSE Lead also gets a direct dotted line to HSE Lead ODC.
   siteLeads.forEach(site => {
     if (hseLeadOdc && hseLeadOdc.EmployeeID !== site.ReportsToID) {
       connect(hseLeadOdc.EmployeeID, site.EmployeeID, 'dotted');
     }
   });
 
-  // Industrial Hygenist reports indirectly (dotted) to HSE Lead ODC, who sits
-  // above both Cluster HSE Leads and Site HSE Leads in this indirect hierarchy.
+  // Industrial Hygenist reports indirectly (dotted) to HSE Lead ODC too.
   industrialHygenists.forEach(hyg => {
     if (hseLeadOdc && hseLeadOdc.EmployeeID !== hyg.ReportsToID) {
       connect(hseLeadOdc.EmployeeID, hyg.EmployeeID, 'dotted');
