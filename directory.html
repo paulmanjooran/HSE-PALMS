@@ -134,6 +134,7 @@
   }
   svg#connectors { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
   .tree-level { display: flex; justify-content: center; gap: 36px; margin-bottom: 64px; position: relative; z-index: 2; flex-wrap: wrap; }
+  .tree-level.left-align-row { justify-content: flex-start; padding-left: 18%; }
   .tree-level.context-level { margin-bottom: 34px; }
   .node.context-node { opacity: 0.6; border: 1px dashed #8891a0; }
   .tree-branch.odc-half-level .node { margin-top: -46px; }
@@ -892,12 +893,15 @@ function renderTree() {
   // direct reports to HSE GM at the same depth. Split him into his own row
   // whenever he'd otherwise land as a sibling of a Cluster/Site Lead, visually
   // reflecting the indirect oversight hierarchy even in the un-drilled overview.
+  // Left-aligned (not centered) rather than centered across the full row width.
+  const odcSoloRows = new Set();
   for (let i = 0; i < levels.length; i++) {
     const odcHere = levels[i].filter(n => n.Role === 'HSE Lead ODC');
     const hasClusterOrSitePeer = levels[i].some(n => n.Role === 'HSE Cluster Lead' || n.Role === 'HSE Site Lead');
     if (odcHere.length && hasClusterOrSitePeer) {
       levels[i] = levels[i].filter(n => n.Role !== 'HSE Lead ODC');
       levels.splice(i, 0, odcHere);
+      odcSoloRows.add(odcHere);
       i++; // skip past the row we just inserted, don't reprocess it
     }
   }
@@ -918,7 +922,7 @@ function renderTree() {
     // circumstance - not just when drilled into a Cluster/Site Lead or
     // Industrial Hygenist. Whoever is focused on, if HSE Lead ODC isn't
     // already visible in their subtree, show him as context.
-    if (roots.length === 1 && roots[0].Role !== 'HSE Lead ODC') {
+    if (roots.length === 1 && roots[0].Role !== 'HSE Lead ODC' && roots[0].Role !== 'HSE Site Lead') {
       const allNodes = flattenTree_(RAW.organogram);
       const alreadyVisibleIds = new Set(subtreeNodes.map(n => n.EmployeeID));
       const contextNodes = allNodes.filter(n =>
@@ -952,12 +956,14 @@ function renderTree() {
     }
 
     // Reverse case: drilled into HSE Lead ODC himself - show every Cluster HSE
-    // Lead and Site HSE Lead as dotted-line "virtual reports" beside him, even
-    // though they aren't his literal direct reports in the real hierarchy.
+    // Lead and Industrial Hygenist as dotted-line "virtual reports" beside him,
+    // even though they aren't his literal direct reports in the real hierarchy.
+    // Site HSE Leads are deliberately excluded - dotted lines to ODC are
+    // limited to Cluster HSE Lead and Industrial Hygenist only.
     if (roots.length === 1 && roots[0].Role === 'HSE Lead ODC') {
       const alreadyVisibleIds2 = new Set(subtreeNodes.map(n => n.EmployeeID));
       const dottedChildren = flattenTree_(RAW.organogram).filter(n =>
-        (n.Role === 'HSE Cluster Lead' || n.Role === 'HSE Site Lead' || n.Role === 'Industrial Hygenist') && !alreadyVisibleIds2.has(n.EmployeeID)
+        (n.Role === 'HSE Cluster Lead' || n.Role === 'Industrial Hygenist') && !alreadyVisibleIds2.has(n.EmployeeID)
       );
       if (dottedChildren.length) {
         levels[1] = (levels[1] || []).concat(dottedChildren);
@@ -969,6 +975,7 @@ function renderTree() {
   levels.forEach((levelNodes, depth) => {
     const levelDiv = document.createElement('div');
     levelDiv.className = 'tree-level';
+    if (odcSoloRows.has(levelNodes)) levelDiv.classList.add('left-align-row');
     levelDiv.dataset.depth = depth;
     levelNodes.forEach(n => {
       const el = buildNodeEl(n, filteredIds, contextNodeIds.has(n.EmployeeID));
@@ -1176,19 +1183,14 @@ function drawIndirectConnectors_(connect) {
   const all = flattenTree_(RAW.organogram);
   const clusterLeads = all.filter(n => n.Role === 'HSE Cluster Lead');
   const hseLeadOdc = all.find(n => n.Role === 'HSE Lead ODC');
-  const siteLeads = all.filter(n => n.Role === 'HSE Site Lead');
   const industrialHygenists = all.filter(n => n.Role === 'Industrial Hygenist');
 
-  // Every Cluster HSE Lead and Site HSE Lead reports indirectly (dotted) to
-  // HSE Lead ODC only - no cross-connections between Cluster and Site Leads.
+  // Dotted (indirect) reporting is limited to Cluster HSE Lead <-> HSE Lead ODC
+  // only. Site HSE Leads get NO dotted line to ODC at all - their reporting is
+  // purely via the solid line to their actual manager (typically their Cluster Lead).
   clusterLeads.forEach(lead => {
     if (hseLeadOdc && hseLeadOdc.EmployeeID !== lead.ReportsToID) {
       connect(hseLeadOdc.EmployeeID, lead.EmployeeID, 'dotted');
-    }
-  });
-  siteLeads.forEach(site => {
-    if (hseLeadOdc && hseLeadOdc.EmployeeID !== site.ReportsToID) {
-      connect(hseLeadOdc.EmployeeID, site.EmployeeID, 'dotted');
     }
   });
 
