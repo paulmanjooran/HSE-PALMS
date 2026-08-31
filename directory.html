@@ -117,6 +117,7 @@
   #treeLegend .legend-swatch { width: 24px; height: 0; border-top-width: 2.5px; border-top-style: solid; flex-shrink: 0; }
   #treeLegend .legend-swatch.solid { border-top-color: var(--blue); }
   #treeLegend .legend-swatch.dotted { border-top-color: #8891a0; border-top-style: dashed; }
+  #treeLegend .legend-swatch.partner { border-top-color: #00796b; border-top-style: dotted; border-top-width: 3px; }
   #treeLegend .legend-icon { width: 24px; text-align: center; font-size: 13px; flex-shrink: 0; }
   #breadcrumb.show { display: flex; }
   #breadcrumb a { color: var(--blue); cursor: pointer; font-weight: 600; text-decoration: none; }
@@ -165,6 +166,12 @@
   }
   .manager-badge:hover { background: rgba(46,125,50,0.22); }
   .manager-badge-inline { font-size: 12px; margin-left: 4px; }
+  .shift-partner-badge {
+    display: inline-flex; align-items: center; gap: 3px; font-size: 9px; font-weight: 700; color: #00796b;
+    background: rgba(0,121,107,0.12); padding: 2px 7px; border-radius: 8px; margin-top: 4px; cursor: pointer;
+    max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .shift-partner-badge:hover { background: rgba(0,121,107,0.22); }
   .eye-btn {
     position: absolute; top: 6px; left: 6px; border: none; background: rgba(255,255,255,0.85); width: 22px; height: 22px;
     border-radius: 50%; font-size: 11px; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.15); z-index: 2;
@@ -494,6 +501,7 @@
   <div class="legend-row"><span class="legend-swatch dotted"></span> Indirect reporting</div>
   <div class="legend-row"><span class="legend-icon">👁️</span> View profile</div>
   <div class="legend-row"><span class="legend-icon">🌳</span> View this person's team</div>
+  <div class="legend-row"><span class="legend-swatch partner"></span> Shift rotation partner</div>
 </div>
 
 <div id="overlay" onclick="closePopup()"></div>
@@ -550,6 +558,9 @@
       <option value="National">National</option>
       <option value="Expatriate">Expatriate</option>
     </select>
+
+    <label>Shift Partner (Employee ID)</label>
+    <input type="text" id="editShiftPartnerId" placeholder="Their Shift A/B counterpart, if any">
 
     <label>Line Manager (Employee ID)</label>
     <input type="text" id="editLineManagerId">
@@ -980,6 +991,7 @@ function buildNodeEl(n, filteredIds, isContext) {
 
   const photo = n.PhotoFileID ? ('https://drive.google.com/thumbnail?id=' + n.PhotoFileID) : '';
   const clusterColor = colorForCluster(n.Cluster);
+  const shiftPartner = n.ShiftPartnerID ? findNode(RAW.organogram, n.ShiftPartnerID) : null;
 
   el.innerHTML =
     '<img src="' + (photo || placeholderImg()) + '" onerror="this.src=\'' + placeholderImg() + '\'">' +
@@ -987,6 +999,7 @@ function buildNodeEl(n, filteredIds, isContext) {
     '<div class="name">' + (n.Name || '') + '</div>' +
     '<div class="role">' + (n.Role || '') + '</div>' +
     ((n.children && n.children.length) ? '<div class="manager-badge" data-manager-id="' + n.EmployeeID + '" title="View this person\'s team in People Matrix">🌳 ' + n.children.length + ' report' + (n.children.length > 1 ? 's' : '') + '</div>' : '') +
+    (shiftPartner ? '<div class="shift-partner-badge" data-partner-id="' + shiftPartner.EmployeeID + '" title="Shift rotation partner">🔄 ' + shiftPartner.Name + '</div>' : '') +
     '<div class="tags">' +
       '<span class="tag" style="background:' + clusterColor + '">' + (n.Cluster || '').replace('ODC-','') + '</span>' +
       (n.ShiftType ? '<span class="tag" style="background:#8891a0">' + n.ShiftType + '</span>' : '') +
@@ -1004,6 +1017,13 @@ function buildNodeEl(n, filteredIds, isContext) {
   if (managerBadge) managerBadge.addEventListener('click', function(ev) {
     ev.stopPropagation();
     drillToManagerMatrix(n.EmployeeID);
+  });
+
+  const shiftPartnerBadge = el.querySelector('.shift-partner-badge');
+  if (shiftPartnerBadge) shiftPartnerBadge.addEventListener('click', function(ev) {
+    ev.stopPropagation();
+    const partner = findNode(RAW.organogram, shiftPartnerBadge.dataset.partnerId);
+    if (partner) openPopup(partner);
   });
 
   branch.appendChild(el);
@@ -1038,7 +1058,9 @@ function drawConnectors() {
     '<stop offset="0%" stop-color="#21409a"/><stop offset="100%" stop-color="#f58220"/>' +
     '</linearGradient></defs>';
 
-  // style: 'solid' = direct reporting line; 'dotted' = indirect/dotted-line reporting.
+  // style: 'solid' = direct reporting line; 'dotted' = indirect/dotted-line reporting;
+  // 'partner' = shift rotation pairing (not a reporting relationship at all - two
+  // peers covering the same position on alternating Shift A/B rotations).
   // Coordinates are divided by treeZoom: getBoundingClientRect() returns already-
   // scaled screen pixels, but this SVG is itself a child of the scaled #zoomWrapper,
   // so its own coordinates get scaled again on render - dividing here cancels that
@@ -1059,6 +1081,12 @@ function drawConnectors() {
       pathEl.setAttribute('stroke-width', '1.6');
       pathEl.setAttribute('stroke-dasharray', '5,4');
       pathEl.setAttribute('opacity', '0.65');
+    } else if (style === 'partner') {
+      pathEl.setAttribute('stroke', '#00796b');
+      pathEl.setAttribute('stroke-width', '1.8');
+      pathEl.setAttribute('stroke-dasharray', '2,5');
+      pathEl.setAttribute('stroke-linecap', 'round');
+      pathEl.setAttribute('opacity', '0.7');
     } else {
       pathEl.setAttribute('stroke', 'url(#lineGrad)');
       pathEl.setAttribute('stroke-width', '2');
@@ -1078,6 +1106,18 @@ function drawConnectors() {
 
   solidContextConnections.forEach(([managerId, rootId]) => connect(managerId, rootId, 'solid'));
   drawIndirectConnectors_(connect);
+
+  // Shift rotation partner pairs. Deduped so a pair isn't drawn twice if both
+  // records happen to reference each other (A -> B and B -> A).
+  const allPeople = flattenTree_(RAW.organogram);
+  const drawnPairs = new Set();
+  allPeople.forEach(n => {
+    if (!n.ShiftPartnerID) return;
+    const pairKey = [n.EmployeeID, n.ShiftPartnerID].sort().join('|');
+    if (drawnPairs.has(pairKey)) return;
+    drawnPairs.add(pairKey);
+    connect(n.EmployeeID, n.ShiftPartnerID, 'partner');
+  });
 }
 
 // Flattens the org tree into a plain array, for role-based lookups that don't
@@ -1331,6 +1371,7 @@ function enterEditMode() {
       document.getElementById('editEmail').value = person.Email || '';
       document.getElementById('editCluster').value = person.Cluster || '';
       document.getElementById('editNationality').value = person.Nationality || '';
+      document.getElementById('editShiftPartnerId').value = person.ShiftPartnerID || '';
       document.getElementById('editLineManagerId').value = person.ReportsToID || '';
       document.getElementById('editLineManagerName').value = person.LineManagerName || '';
       document.getElementById('editLineManagerEmail').value = person.LineManagerEmail || '';
@@ -1426,6 +1467,7 @@ function saveProfile() {
     role: document.getElementById('editRole').value,
     shiftType: document.getElementById('editShiftType').value,
     nationality: document.getElementById('editNationality').value,
+    shiftPartnerId: document.getElementById('editShiftPartnerId').value.trim(),
     division: document.getElementById('editDivision').value,
     lineManagerId: document.getElementById('editLineManagerId').value.trim(),
     lineManagerName: document.getElementById('editLineManagerName').value,
