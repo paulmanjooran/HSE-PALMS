@@ -170,6 +170,9 @@
       <option value="Expatriate">Expatriate</option>
     </select>
 
+    <label>Shift Partner (Employee ID) - optional</label>
+    <input type="text" id="shiftPartnerId" placeholder="Leave blank if not applicable">
+
     <label>Line Manager (Employee ID) *</label>
     <input type="text" id="lineManagerId" required>
 
@@ -254,6 +257,7 @@
       role: document.getElementById('role').value,
       shiftType: document.getElementById('shiftType').value,
       nationality: document.getElementById('nationality').value,
+      shiftPartnerId: document.getElementById('shiftPartnerId').value.trim(),
       lineManagerId: document.getElementById('lineManagerId').value.trim(),
       lineManagerName: document.getElementById('lineManagerName').value,
       lineManagerEmail: document.getElementById('lineManagerEmail').value,
