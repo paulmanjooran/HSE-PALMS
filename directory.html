@@ -168,6 +168,38 @@
   .node.compact-node img { width: calc(76px - 1mm); height: calc(76px - 1mm); }
   .node.advisor-node { width: calc(172px - 2mm); padding: 14px 12px 12px; }
   .node.advisor-node img { width: calc(76px - 2mm); height: calc(76px - 2mm); }
+
+  /* Group tile - consolidated Expat Advisors dual-reporting to the same pair
+     of managers. Distinct "stacked" look via layered box-shadows, so it reads
+     visually as a group rather than an individual person's card. */
+  .node.group-tile {
+    background: linear-gradient(135deg, rgba(0,121,107,0.12), rgba(0,121,107,0.04));
+    border: 1.5px dashed #00796b;
+    box-shadow: 4px 4px 0 -2px rgba(255,255,255,0.9), 4px 4px 0 -1px #00796b,
+                8px 8px 0 -4px rgba(255,255,255,0.9), 8px 8px 0 -3px #b2dfdb,
+                0 14px 34px rgba(30,40,60,0.14);
+  }
+  .node.group-tile .group-tile-icon { font-size: 28px; margin-bottom: 4px; }
+  .node.group-tile .name { color: #00796b; }
+  .node.group-tile .role { color: #4d8f89; }
+
+  #groupPopup {
+    display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    background: #fff; border-radius: 16px; padding: 20px 22px; width: 340px; max-height: 70vh;
+    overflow-y: auto; z-index: 101; box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+  }
+  #groupPopup.show { display: block; }
+  .group-popup-title { font-family: 'Manrope'; font-weight: 800; font-size: 15px; color: var(--dark); padding-right: 24px; }
+  .group-popup-managers { font-size: 11px; font-weight: 600; color: #00796b; margin-top: 4px; }
+  .group-popup-sub { font-size: 11px; color: #8891a0; margin-top: 6px; margin-bottom: 12px; }
+  .group-member-row {
+    display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 10px; cursor: pointer;
+    transition: background .15s;
+  }
+  .group-member-row:hover { background: #f2f4f6; }
+  .group-member-row img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #dfe3e7; }
+  .group-member-name { font-size: 12.5px; font-weight: 700; color: var(--dark); }
+  .group-member-id { font-size: 10.5px; color: #8891a0; }
   .manager-badge {
     display: inline-flex; align-items: center; gap: 3px; font-size: 9px; font-weight: 700; color: #2e7d32;
     background: rgba(46,125,50,0.12); padding: 2px 7px; border-radius: 8px; margin-top: 4px; cursor: pointer;
@@ -513,6 +545,16 @@
 </div>
 
 <div id="overlay" onclick="closePopup()"></div>
+
+<div id="groupPopup">
+  <div class="pop-toolbar">
+    <button class="icon-btn" title="Close" onclick="closePopup()">✕</button>
+  </div>
+  <div class="group-popup-title" id="groupPopupTitle"></div>
+  <div class="group-popup-sub">Click anyone to view their full profile</div>
+  <div id="groupPopupMembers"></div>
+</div>
+
 <div id="popup">
   <div class="pop-toolbar">
     <button class="icon-btn" title="Screenshot card" onclick="screenshotEl('popup','employee-card')">📷</button>
@@ -879,11 +921,12 @@ function renderTree() {
   const levelsHost = document.getElementById('treeLevels');
   levelsHost.innerHTML = '';
   const filteredIds = getFilteredIds();
+  const groupedOrg = buildGroupedTreeForDisplay_();
 
-  let roots = RAW.organogram;
+  let roots = groupedOrg;
   if (focusId) {
-    const found = findNode(RAW.organogram, focusId);
-    roots = found ? [found] : RAW.organogram;
+    const found = findNode(groupedOrg, focusId);
+    roots = found ? [found] : groupedOrg;
   }
 
   const levels = [];
@@ -1014,6 +1057,20 @@ function buildNodeEl(n, filteredIds, isContext) {
   const branch = document.createElement('div');
   branch.className = 'tree-branch';
   branch.id = 'branch-' + n.EmployeeID;
+
+  if (n.isGroupTile) {
+    const el = document.createElement('div');
+    el.className = 'node group-tile';
+    el.id = 'node-' + n.EmployeeID;
+    el.innerHTML =
+      '<div class="group-tile-icon">👥</div>' +
+      '<div class="name">' + n.Name + '</div>' +
+      '<div class="role">Dual-reporting</div>' +
+      '<div class="tags"><span class="tag" style="background:' + colorForCluster(n.Cluster) + '">' + (n.Cluster || '').replace('ODC-','') + '</span></div>';
+    el.addEventListener('click', function(ev) { ev.stopPropagation(); openGroupTilePopup_(n); });
+    branch.appendChild(el);
+    return branch;
+  }
 
   const el = document.createElement('div');
   el.className = 'node';
@@ -1182,14 +1239,14 @@ function drawConnectors() {
   solidContextConnections.forEach(([managerId, rootId]) => connect(managerId, rootId, 'solid'));
   drawIndirectConnectors_(connect);
 
-  // Dual-manager relationships (e.g. a stationary Expat Advisor overseen by
-  // both the Shift A and Shift B Site Leads, who rotate). Both managers' lines
-  // curve inward and merge into a single line before reaching the child,
-  // instead of two independent curves that could cross other lines unpredictably.
-  flattenTree_(RAW.organogram).forEach(n => {
-    if (n.SecondaryReportsToID && n.ReportsToID) {
-      connectDualManager_(n.ReportsToID, n.SecondaryReportsToID, n.EmployeeID);
-    }
+  // Dual-manager relationships (e.g. Expat HSE Advisors overseen by both the
+  // Shift A and Shift B Site Leads, who rotate). Consolidated into one group
+  // tile per manager pair (see buildGroupedTreeForDisplay_) rather than
+  // connecting each individual, since every Expat Advisor follows this same
+  // pattern - many individual funnels would clutter the diagram. Both
+  // managers' lines curve inward and merge into a single line to the tile.
+  LAST_GROUP_TILES.forEach(g => {
+    connectDualManager_(g.primaryId, g.secondaryId, g.tileId);
   });
 
   // Shift rotation partner pairs. Deduped so a pair isn't drawn twice if both
@@ -1211,6 +1268,59 @@ function flattenTree_(nodes) {
   let out = [];
   (nodes || []).forEach(n => { out.push(n); out = out.concat(flattenTree_(n.children || [])); });
   return out;
+}
+
+// Builds a version of the org tree for Tree view display ONLY, where every
+// dual-reporting Expat HSE Advisor (Nationality=Expatriate, both a primary and
+// secondary manager set) is consolidated into ONE group tile per unique
+// (primary manager, secondary manager) pair - all of them do this, so showing
+// each individually would clutter the diagram with many near-identical funnel
+// connectors. RAW.organogram itself is untouched; Matrix/Summary/Admin still
+// see every real individual record.
+let LAST_GROUP_TILES = []; // [{tileId, primaryId, secondaryId}], refreshed each time the grouped tree is built
+function buildGroupedTreeForDisplay_() {
+  const groups = {};
+  const groupedIds = new Set();
+
+  flattenTree_(RAW.organogram).forEach(n => {
+    if (n.Role === 'HSE Advisor' && n.Nationality === 'Expatriate' && n.SecondaryReportsToID && n.ReportsToID) {
+      const key = n.ReportsToID + '|' + n.SecondaryReportsToID;
+      if (!groups[key]) groups[key] = { primaryId: n.ReportsToID, secondaryId: n.SecondaryReportsToID, members: [] };
+      groups[key].members.push(n);
+      groupedIds.add(n.EmployeeID);
+    }
+  });
+
+  function cloneAndFilter(nodes) {
+    return (nodes || [])
+      .filter(n => !groupedIds.has(n.EmployeeID))
+      .map(n => Object.assign({}, n, { children: cloneAndFilter(n.children || []) }));
+  }
+  const grouped = cloneAndFilter(RAW.organogram);
+
+  LAST_GROUP_TILES = [];
+  Object.keys(groups).forEach(key => {
+    const g = groups[key];
+    const tile = {
+      EmployeeID: 'group-' + key,
+      Name: g.members.length + ' Expat HSE Advisor' + (g.members.length > 1 ? 's' : ''),
+      Role: 'HSE Advisor',
+      Cluster: g.members[0].Cluster,
+      isGroupTile: true,
+      groupMembers: g.members,
+      groupSecondaryId: g.secondaryId,
+      ReportsToID: g.primaryId,
+      children: []
+    };
+    const primaryNode = findNode(grouped, g.primaryId);
+    if (primaryNode) {
+      primaryNode.children = primaryNode.children || [];
+      primaryNode.children.push(tile);
+    }
+    LAST_GROUP_TILES.push({ tileId: tile.EmployeeID, primaryId: g.primaryId, secondaryId: g.secondaryId });
+  });
+
+  return grouped;
 }
 
 // Reorders one sibling group (children of the same manager) so that a Back to
@@ -1425,7 +1535,36 @@ function openPopup(n) {
 function closePopup() {
   document.getElementById('overlay').classList.remove('show');
   document.getElementById('popup').classList.remove('show');
+  document.getElementById('groupPopup').classList.remove('show');
   currentEditEmployeeId = null;
+}
+
+function openGroupTilePopup_(groupNode) {
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('groupPopupTitle').textContent = groupNode.Name;
+  const secondaryManager = findNode(RAW.organogram, groupNode.groupSecondaryId);
+  const primaryManager = findNode(RAW.organogram, groupNode.ReportsToID);
+  const managerLine = (primaryManager && secondaryManager)
+    ? 'Dual-reporting to ' + primaryManager.Name + ' and ' + secondaryManager.Name
+    : '';
+  document.getElementById('groupPopupTitle').innerHTML = groupNode.Name +
+    (managerLine ? '<div class="group-popup-managers">' + managerLine + '</div>' : '');
+
+  const membersHost = document.getElementById('groupPopupMembers');
+  membersHost.innerHTML = groupNode.groupMembers.map(m => `
+    <div class="group-member-row" data-empid="${m.EmployeeID}">
+      <img src="${m.PhotoFileID ? 'https://drive.google.com/thumbnail?id=' + m.PhotoFileID : placeholderImg()}" onerror="this.src='${placeholderImg()}'">
+      <div><div class="group-member-name">${m.Name}</div><div class="group-member-id">${m.EmployeeID}</div></div>
+    </div>
+  `).join('');
+  membersHost.querySelectorAll('.group-member-row').forEach(row => {
+    row.addEventListener('click', function() {
+      const member = groupNode.groupMembers.find(m => m.EmployeeID === row.dataset.empid);
+      if (member) { closePopup(); openPopup(member); }
+    });
+  });
+
+  document.getElementById('groupPopup').classList.add('show');
 }
 
 function ensureFormOptions(cb) {
