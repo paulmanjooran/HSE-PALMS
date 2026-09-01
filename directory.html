@@ -350,8 +350,116 @@
     .node { width: 118px; }
   }
 </style>
+<style>
+  #loginGate {
+    position: fixed; inset: 0; background: linear-gradient(135deg, #4d555b, #21409a); z-index: 9999;
+    display: flex; align-items: center; justify-content: center; font-family: 'Segoe UI', Arial, sans-serif;
+  }
+  #loginGate .box { background: #fff; border-radius: 16px; padding: 36px; max-width: 380px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+  #loginGate h2 { margin: 0 0 4px; color: #4d555b; font-size: 19px; }
+  #loginGate .sub { color: #8891a0; font-size: 12.5px; margin-bottom: 22px; }
+  #loginGate label { display: block; font-size: 11.5px; font-weight: 700; color: #8891a0; text-transform: uppercase; margin-top: 14px; margin-bottom: 4px; }
+  #loginGate input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+  #loginGate button.primary { width: 100%; margin-top: 20px; padding: 12px; background: #21409a; color: #fff; border: none;
+    border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  #loginGate button.primary:disabled { background: #aaa; cursor: not-allowed; }
+  #loginGate .forgot-link { text-align: center; margin-top: 14px; font-size: 12.5px; color: #21409a; cursor: pointer; text-decoration: underline; }
+  #loginGate #gateStatus { margin-top: 14px; font-size: 12.5px; padding: 9px 12px; border-radius: 7px; display: none; }
+  #loginGate #gateStatus.err { display: block; background: #fdecea; color: #c62828; }
+  #loginGate #gateStatus.ok { display: block; background: #e8f5e9; color: #2e7d32; }
+  #loginGate #forgotSection { display: none; }
+  #appContent { display: none; }
+</style>
 </head>
 <body>
+<div id="loginGate">
+  <div class="box">
+    <div id="loginSection">
+      <h2>HSE PALMS</h2>
+      <div class="sub">Sign in to continue</div>
+      <label>Username</label>
+      <input type="text" id="gateUsername" value="ATNM HSE" disabled style="background:#f2f4f6;color:#8891a0;">
+      <label>Password</label>
+      <input type="password" id="gatePassword">
+      <button class="primary" id="gateLoginBtn" onclick="attemptLogin()">Sign In</button>
+      <div class="forgot-link" onclick="showForgot()">Forgot password?</div>
+      <div id="gateStatus"></div>
+    </div>
+    <div id="forgotSection">
+      <h2>Forgot Password</h2>
+      <div class="sub">Enter your @altasnim.com email - the password will be sent to you.</div>
+      <label>Email</label>
+      <input type="email" id="forgotEmail" placeholder="yourname@altasnim.com">
+      <button class="primary" id="forgotBtn" onclick="attemptForgot()">Send Password</button>
+      <div class="forgot-link" onclick="showLogin()">Back to sign in</div>
+      <div id="gateStatus2"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  function setGateStatus(id, msg, cls) {
+    const el = document.getElementById(id);
+    el.className = cls; el.textContent = msg;
+  }
+  window.showForgot = function() {
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('forgotSection').style.display = 'block';
+  };
+  window.showLogin = function() {
+    document.getElementById('forgotSection').style.display = 'none';
+    document.getElementById('loginSection').style.display = 'block';
+  };
+  window.attemptLogin = function() {
+    const username = document.getElementById('gateUsername').value.trim();
+    const password = document.getElementById('gatePassword').value;
+    const btn = document.getElementById('gateLoginBtn');
+    btn.disabled = true; btn.textContent = 'Checking...';
+    fetch(BASE_URL + '?action=checkLogin&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password))
+      .then(function(res) { return res.json(); })
+      .then(function(result) {
+        btn.disabled = false; btn.textContent = 'Sign In';
+        if (!result.success) { setGateStatus('gateStatus', result.error, 'err'); return; }
+        sessionStorage.setItem('hsePalmsAuth', 'true');
+        document.getElementById('loginGate').style.display = 'none';
+        document.getElementById('appContent').style.display = 'block';
+        if (typeof onGateUnlocked === 'function') onGateUnlocked();
+      })
+      .catch(function(err) {
+        btn.disabled = false; btn.textContent = 'Sign In';
+        setGateStatus('gateStatus', 'Login failed: ' + err.message, 'err');
+      });
+  };
+  window.attemptForgot = function() {
+    const email = document.getElementById('forgotEmail').value.trim();
+    const btn = document.getElementById('forgotBtn');
+    btn.disabled = true; btn.textContent = 'Sending...';
+    fetch(BASE_URL + '?action=forgotPassword&email=' + encodeURIComponent(email))
+      .then(function(res) { return res.json(); })
+      .then(function(result) {
+        btn.disabled = false; btn.textContent = 'Send Password';
+        setGateStatus('gateStatus2', result.success ? result.message : result.error, result.success ? 'ok' : 'err');
+      })
+      .catch(function(err) {
+        btn.disabled = false; btn.textContent = 'Send Password';
+        setGateStatus('gateStatus2', 'Failed: ' + err.message, 'err');
+      });
+  };
+  // Skip the gate if already authenticated this browser session.
+  // Deferred to DOMContentLoaded so onGateUnlocked (defined later in the page,
+  // after the main content script) is guaranteed to exist by the time we call it.
+  document.addEventListener('DOMContentLoaded', function() {
+    if (sessionStorage.getItem('hsePalmsAuth') === 'true') {
+      document.getElementById('loginGate').style.display = 'none';
+      document.getElementById('appContent').style.display = 'block';
+      if (typeof onGateUnlocked === 'function') onGateUnlocked();
+    }
+  });
+})();
+</script>
+
+<div id="appContent">
 
 <div id="topbar">
   <div>
@@ -524,7 +632,7 @@
 </div>
 
 <script>
-const BASE_URL = "<?= baseUrl ?>";
+const BASE_URL = "https://script.google.com/macros/s/AKfycbxY_ju_CjS-6vBox8XZ7dJe9KtHXpBcSEBSABxmrS1IGAfcd5O10qwJTEN3JfskehJX/exec";
 let RAW = { personnel: [], organogram: [], leave: [] };
 let currentView = 'tree';
 let treeZoom = 1;
@@ -924,17 +1032,27 @@ function renderTree() {
     // second one.
     if (roots.length === 1 && LAST_GROUP_TILES) {
       const asSecondary = LAST_GROUP_TILES.filter(g => g.tileType === 'dual-manager' && g.secondaryId === roots[0].EmployeeID);
-      asSecondary.forEach(g => {
-        const tileNode = findNode(groupedOrg, g.tileId);
-        if (tileNode && !flattenTree_(roots).some(n => n.EmployeeID === tileNode.EmployeeID)) {
-          levels[1] = (levels[1] || []).concat([tileNode]);
-          // The full three-way funnel connector needs both managers visible at
-          // once - only the secondary manager is shown here, so draw a simple
-          // direct line instead, reusing the same mechanism as other
-          // drilled-view context connections.
-          solidContextConnections.push([roots[0].EmployeeID, tileNode.EmployeeID]);
+      if (asSecondary.length) {
+        // Find the row that actually contains roots[0] NOW - the manager-chain
+        // block above may have unshifted several ancestor rows in front of it,
+        // so its index is no longer necessarily 1 (a hardcoded index here was
+        // a real bug: with 2+ ancestor levels inserted, the tile would land in
+        // the wrong row entirely, merged with an ancestor's context row).
+        const rootRowIdx = levels.findIndex(levelNodes => levelNodes.some(n => n.EmployeeID === roots[0].EmployeeID));
+        if (rootRowIdx > -1) {
+          asSecondary.forEach(g => {
+            const tileNode = findNode(groupedOrg, g.tileId);
+            if (tileNode && !flattenTree_(roots).some(n => n.EmployeeID === tileNode.EmployeeID)) {
+              levels[rootRowIdx] = levels[rootRowIdx].concat([tileNode]);
+              // The full three-way funnel connector needs both managers visible at
+              // once - only the secondary manager is shown here, so draw a simple
+              // direct line instead, reusing the same mechanism as other
+              // drilled-view context connections.
+              solidContextConnections.push([roots[0].EmployeeID, tileNode.EmployeeID]);
+            }
+          });
         }
-      });
+      }
     }
 
     // Reverse case: drilled into HSE Lead ODC himself - show every Cluster HSE
@@ -948,8 +1066,11 @@ function renderTree() {
         (n.Role === 'HSE Cluster Lead' || n.Role === 'Industrial Hygenist') && !alreadyVisibleIds2.has(n.EmployeeID)
       );
       if (dottedChildren.length) {
-        levels[1] = (levels[1] || []).concat(dottedChildren);
-        dottedChildren.forEach(n => contextNodeIds.add(n.EmployeeID));
+        const odcRowIdx = levels.findIndex(levelNodes => levelNodes.some(n => n.EmployeeID === roots[0].EmployeeID));
+        if (odcRowIdx > -1) {
+          levels[odcRowIdx] = levels[odcRowIdx].concat(dottedChildren);
+          dottedChildren.forEach(n => contextNodeIds.add(n.EmployeeID));
+        }
       }
     }
   }
@@ -1028,8 +1149,18 @@ function buildNodeEl(n, filteredIds, isContext) {
   // Reporting count reflects actual PEOPLE, not tile count - a Site Lead with
   // a National Advisor group (5 people) and a shared Expat group (2 people)
   // shows "7 reports", not "2" (which would just be counting the two tiles).
-  const effectiveReportCount = (n.children || []).reduce((sum, c) =>
+  // Also adds any dual-manager group where THIS node is the SECONDARY
+  // manager - that tile only ever lives in the primary manager's own
+  // children array, so without this a secondary manager's count would be
+  // missing the shared Expat group entirely, undercounting their real total.
+  let effectiveReportCount = (n.children || []).reduce((sum, c) =>
     sum + (c.isGroupTile ? c.groupMembers.length : 1), 0);
+  if (LAST_GROUP_TILES) {
+    LAST_GROUP_TILES.filter(g => g.tileType === 'dual-manager' && g.secondaryId === n.EmployeeID).forEach(g => {
+      const tileNode = findNode(LAST_GROUPED_ORG || [], g.tileId);
+      if (tileNode) effectiveReportCount += tileNode.groupMembers.length;
+    });
+  }
 
   el.innerHTML =
     '<img src="' + (photo || placeholderImg()) + '" onerror="this.src=\'' + placeholderImg() + '\'">' +
@@ -1794,6 +1925,9 @@ function downloadA3() {
 }
 
 loadData();
+
+window.onGateUnlocked = loadData;
 </script>
+</div>
 </body>
 </html>
