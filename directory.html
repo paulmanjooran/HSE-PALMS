@@ -178,10 +178,13 @@
     box-shadow: 4px 4px 0 -2px rgba(255,255,255,0.9), 4px 4px 0 -1px #00796b,
                 8px 8px 0 -4px rgba(255,255,255,0.9), 8px 8px 0 -3px #b2dfdb,
                 0 14px 34px rgba(30,40,60,0.14);
+    width: 188px; text-align: left;
   }
-  .node.group-tile .group-tile-icon { font-size: 28px; margin-bottom: 4px; }
-  .node.group-tile .name { color: #00796b; }
-  .node.group-tile .role { color: #4d8f89; }
+  .node.group-tile .group-tile-icon { font-size: 22px; text-align: center; margin-bottom: 6px; }
+  .node.group-tile .group-tile-labels { display: flex; flex-direction: column; gap: 3px; }
+  .node.group-tile .gt-row { display: flex; justify-content: space-between; gap: 8px; font-size: 10.5px; }
+  .node.group-tile .gt-key { color: #4d8f89; font-weight: 600; flex-shrink: 0; }
+  .node.group-tile .gt-val { color: #00524a; font-weight: 700; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   .manager-badge {
     display: inline-flex; align-items: center; gap: 3px; font-size: 9px; font-weight: 700; color: #2e7d32;
@@ -987,6 +990,29 @@ function renderTree() {
       }
     }
 
+    // Dual-manager group tiles (e.g. Expat Advisors reporting to both Shift A
+    // and Shift B Site Leads) are only ever attached under their PRIMARY
+    // manager in the tree structure - the underlying data has one row per
+    // person regardless, so nothing is double-counted anywhere. But drilling
+    // into the SECONDARY manager specifically should still show that same
+    // group as one of their reports too, reflecting the real dual-reporting
+    // relationship, using the identical tile object rather than creating a
+    // second one.
+    if (roots.length === 1 && LAST_GROUP_TILES) {
+      const asSecondary = LAST_GROUP_TILES.filter(g => g.tileType === 'dual-manager' && g.secondaryId === roots[0].EmployeeID);
+      asSecondary.forEach(g => {
+        const tileNode = findNode(groupedOrg, g.tileId);
+        if (tileNode && !flattenTree_(roots).some(n => n.EmployeeID === tileNode.EmployeeID)) {
+          levels[1] = (levels[1] || []).concat([tileNode]);
+          // The full three-way funnel connector needs both managers visible at
+          // once - only the secondary manager is shown here, so draw a simple
+          // direct line instead, reusing the same mechanism as other
+          // drilled-view context connections.
+          solidContextConnections.push([roots[0].EmployeeID, tileNode.EmployeeID]);
+        }
+      });
+    }
+
     // Reverse case: drilled into HSE Lead ODC himself - show every Cluster HSE
     // Lead and Industrial Hygenist as dotted-line "virtual reports" beside him,
     // even though they aren't his literal direct reports in the real hierarchy.
@@ -1045,12 +1071,16 @@ function buildNodeEl(n, filteredIds, isContext) {
     const el = document.createElement('div');
     el.className = 'node group-tile';
     el.id = 'node-' + n.EmployeeID;
-    const subLabel = n.tileType === 'shift-pair' ? 'Back to Back Shift Partners' : 'Dual-reporting';
+    const designation = n.tileType === 'shift-pair' ? (n.Role || 'Staff') + 's' : n.Role;
+    const shiftLabel = n.tileType === 'shift-pair' ? 'Shift A / Shift B' : (n.groupMembers[0].ShiftType || 'General');
     el.innerHTML =
       '<div class="group-tile-icon">👥</div>' +
-      '<div class="name">' + n.Name + '</div>' +
-      '<div class="role">' + subLabel + '</div>' +
-      '<div class="tags"><span class="tag" style="background:' + colorForCluster(n.Cluster) + '">' + (n.Cluster || '').replace('ODC-','') + '</span></div>' +
+      '<div class="group-tile-labels">' +
+        '<div class="gt-row"><span class="gt-key">Name</span><span class="gt-val">' + n.Name + '</span></div>' +
+        '<div class="gt-row"><span class="gt-key">Designation</span><span class="gt-val">' + designation + '</span></div>' +
+        '<div class="gt-row"><span class="gt-key">Cluster</span><span class="gt-val">' + (n.Cluster || '').replace('ODC-','') + '</span></div>' +
+        '<div class="gt-row"><span class="gt-key">Shift</span><span class="gt-val">' + shiftLabel + '</span></div>' +
+      '</div>' +
       '<div class="count-badge">' + n.groupMembers.length + '</div>';
     el.addEventListener('click', function(ev) { ev.stopPropagation(); focusId = n.EmployeeID; render(); });
     branch.appendChild(el);
