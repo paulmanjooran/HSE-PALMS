@@ -825,14 +825,14 @@ function renderSummary() {
 
   host.querySelectorAll('tr[data-empid]').forEach(row => {
     row.addEventListener('click', function() {
-      const p = RAW.personnel.find(x => x.employeeId === row.dataset.empid);
+      const p = RAW.personnel.find(x => String(x.employeeId) === String(row.dataset.empid));
       if (p) openPopup(personnelToNodeShape(p));
     });
   });
   host.querySelectorAll('.eye-btn-inline').forEach(btn => {
     btn.addEventListener('click', function(ev) {
       ev.stopPropagation();
-      const p = RAW.personnel.find(x => x.employeeId === btn.dataset.empid);
+      const p = RAW.personnel.find(x => String(x.employeeId) === String(btn.dataset.empid));
       if (p) openPopup(personnelToNodeShape(p));
     });
   });
@@ -1121,7 +1121,7 @@ function renderTree() {
 
 function findNode(nodes, id) {
   for (const n of nodes) {
-    if (n.EmployeeID === id) return n;
+    if (String(n.EmployeeID) === String(id)) return n;
     const found = findNode(n.children || [], id);
     if (found) return found;
   }
@@ -1603,14 +1603,14 @@ function renderMatrix() {
 
   host.querySelectorAll('.avatar-chip[data-empid]').forEach(chip => {
     chip.addEventListener('click', function() {
-      const p = RAW.personnel.find(x => x.employeeId === chip.dataset.empid);
+      const p = RAW.personnel.find(x => String(x.employeeId) === String(chip.dataset.empid));
       if (p) openPopup(personnelToNodeShape(p));
     });
   });
   host.querySelectorAll('.eye-btn-inline').forEach(btn => {
     btn.addEventListener('click', function(ev) {
       ev.stopPropagation();
-      const p = RAW.personnel.find(x => x.employeeId === btn.dataset.empid);
+      const p = RAW.personnel.find(x => String(x.employeeId) === String(btn.dataset.empid));
       if (p) openPopup(personnelToNodeShape(p));
     });
   });
