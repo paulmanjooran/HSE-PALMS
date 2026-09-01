@@ -135,6 +135,7 @@
   svg#connectors { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
   .tree-level { display: flex; justify-content: center; gap: 36px; margin-bottom: 64px; position: relative; z-index: 2; flex-wrap: wrap; }
   .tree-level.left-align-row { justify-content: flex-start; padding-left: 18%; }
+  .tree-level.odc-solo-row { margin-bottom: 20px; }
   .tree-level.context-level { margin-bottom: 34px; }
   .node.context-node { opacity: 0.6; border: 1px dashed #8891a0; }
   .tree-branch.odc-half-level .node { margin-top: -46px; }
@@ -161,10 +162,12 @@
     position: absolute; top: -8px; right: -8px; background: var(--dark); color: #fff; font-size: 10px; font-weight: 700;
     border-radius: 10px; padding: 2px 7px; box-shadow: 0 2px 6px rgba(0,0,0,0.25);
   }
-  .node.compact-node { width: 128px; padding: 11px 9px 9px; }
-  .node.compact-node img { width: 52px; height: 52px; }
-  .node.compact-node .name { font-size: 11px; margin-top: 6px; }
-  .node.compact-node .role { font-size: 9px; }
+  /* Precise seniority-based size gradation: Cluster HSE Lead (base 172px) >
+     Site HSE Lead (-1mm) > HSE Advisor (-2mm, i.e. 1mm smaller than Site Lead) */
+  .node.compact-node { width: calc(172px - 1mm); padding: 15px 13px 13px; }
+  .node.compact-node img { width: calc(76px - 1mm); height: calc(76px - 1mm); }
+  .node.advisor-node { width: calc(172px - 2mm); padding: 14px 12px 12px; }
+  .node.advisor-node img { width: calc(76px - 2mm); height: calc(76px - 2mm); }
   .manager-badge {
     display: inline-flex; align-items: center; gap: 3px; font-size: 9px; font-weight: 700; color: #2e7d32;
     background: rgba(46,125,50,0.12); padding: 2px 7px; border-radius: 8px; margin-top: 4px; cursor: pointer;
@@ -566,6 +569,9 @@
 
     <label>Back to Back Shift Partner(Employee ID)- Optional</label>
     <input type="text" id="editShiftPartnerId" placeholder="Their Shift A/B counterpart, if any">
+
+    <label>Secondary Line Manager (Employee ID) - Optional</label>
+    <input type="text" id="editSecondaryManagerId" placeholder="For stationary staff overseen by two rotating managers">
 
     <label>Line Manager (Employee ID)</label>
     <input type="text" id="editLineManagerId">
@@ -975,7 +981,7 @@ function renderTree() {
   levels.forEach((levelNodes, depth) => {
     const levelDiv = document.createElement('div');
     levelDiv.className = 'tree-level';
-    if (odcSoloRows.has(levelNodes)) levelDiv.classList.add('left-align-row');
+    if (odcSoloRows.has(levelNodes)) levelDiv.classList.add('left-align-row', 'odc-solo-row');
     levelDiv.dataset.depth = depth;
     levelNodes.forEach(n => {
       const el = buildNodeEl(n, filteredIds, contextNodeIds.has(n.EmployeeID));
@@ -1013,6 +1019,7 @@ function buildNodeEl(n, filteredIds, isContext) {
   el.className = 'node';
   if (isContext) el.classList.add('context-node');
   if (n.Role === 'HSE Site Lead') el.classList.add('compact-node');
+  if (n.Role === 'HSE Advisor') el.classList.add('advisor-node');
   if (filteredIds.size && !filteredIds.has(n.EmployeeID)) el.classList.add('dimmed');
   if (n.TransferStatus === 'Pending Transfer') el.classList.add('pending');
   if (n.RotationStatus === 'overdue') el.classList.add('rotation-overdue');
@@ -1135,6 +1142,16 @@ function drawConnectors() {
 
   solidContextConnections.forEach(([managerId, rootId]) => connect(managerId, rootId, 'solid'));
   drawIndirectConnectors_(connect);
+
+  // Secondary manager relationships (solid line) - e.g. a stationary Expat
+  // Advisor who doesn't rotate, overseen by both the Shift A and Shift B Site
+  // Leads across the rotation cycle. This is a genuine second reporting line,
+  // not indirect - drawn the same solid style as the primary one.
+  flattenTree_(RAW.organogram).forEach(n => {
+    if (n.SecondaryReportsToID) {
+      connect(n.SecondaryReportsToID, n.EmployeeID, 'solid');
+    }
+  });
 
   // Shift rotation partner pairs. Deduped so a pair isn't drawn twice if both
   // records happen to reference each other (A -> B and B -> A).
@@ -1409,6 +1426,7 @@ function enterEditMode() {
       document.getElementById('editCluster').value = person.Cluster || '';
       document.getElementById('editNationality').value = person.Nationality || '';
       document.getElementById('editShiftPartnerId').value = person.ShiftPartnerID || '';
+      document.getElementById('editSecondaryManagerId').value = person.SecondaryReportsToID || '';
       document.getElementById('editLineManagerId').value = person.ReportsToID || '';
       document.getElementById('editLineManagerName').value = person.LineManagerName || '';
       document.getElementById('editLineManagerEmail').value = person.LineManagerEmail || '';
@@ -1505,6 +1523,7 @@ function saveProfile() {
     shiftType: document.getElementById('editShiftType').value,
     nationality: document.getElementById('editNationality').value,
     shiftPartnerId: document.getElementById('editShiftPartnerId').value.trim(),
+    secondaryManagerId: document.getElementById('editSecondaryManagerId').value.trim(),
     division: document.getElementById('editDivision').value,
     lineManagerId: document.getElementById('editLineManagerId').value.trim(),
     lineManagerName: document.getElementById('editLineManagerName').value,
