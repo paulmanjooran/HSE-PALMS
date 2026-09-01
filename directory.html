@@ -183,23 +183,6 @@
   .node.group-tile .name { color: #00796b; }
   .node.group-tile .role { color: #4d8f89; }
 
-  #groupPopup {
-    display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
-    background: #fff; border-radius: 16px; padding: 20px 22px; width: 340px; max-height: 70vh;
-    overflow-y: auto; z-index: 101; box-shadow: 0 24px 60px rgba(0,0,0,0.3);
-  }
-  #groupPopup.show { display: block; }
-  .group-popup-title { font-family: 'Manrope'; font-weight: 800; font-size: 15px; color: var(--dark); padding-right: 24px; }
-  .group-popup-managers { font-size: 11px; font-weight: 600; color: #00796b; margin-top: 4px; }
-  .group-popup-sub { font-size: 11px; color: #8891a0; margin-top: 6px; margin-bottom: 12px; }
-  .group-member-row {
-    display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 10px; cursor: pointer;
-    transition: background .15s;
-  }
-  .group-member-row:hover { background: #f2f4f6; }
-  .group-member-row img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #dfe3e7; }
-  .group-member-name { font-size: 12.5px; font-weight: 700; color: var(--dark); }
-  .group-member-id { font-size: 10.5px; color: #8891a0; }
   .manager-badge {
     display: inline-flex; align-items: center; gap: 3px; font-size: 9px; font-weight: 700; color: #2e7d32;
     background: rgba(46,125,50,0.12); padding: 2px 7px; border-radius: 8px; margin-top: 4px; cursor: pointer;
@@ -546,15 +529,6 @@
 
 <div id="overlay" onclick="closePopup()"></div>
 
-<div id="groupPopup">
-  <div class="pop-toolbar">
-    <button class="icon-btn" title="Close" onclick="closePopup()">✕</button>
-  </div>
-  <div class="group-popup-title" id="groupPopupTitle"></div>
-  <div class="group-popup-sub">Click anyone to view their full profile</div>
-  <div id="groupPopupMembers"></div>
-</div>
-
 <div id="popup">
   <div class="pop-toolbar">
     <button class="icon-btn" title="Screenshot card" onclick="screenshotEl('popup','employee-card')">📷</button>
@@ -763,9 +737,11 @@ function getFilteredIds() {
   return new Set(RAW.personnel.filter(matchesFilters).map(p => p.employeeId));
 }
 
+let LAST_GROUPED_ORG = null;
 function render() {
   if (!RAW.personnel.length) { document.getElementById('emptyMsg').style.display = 'block'; return; }
   document.getElementById('emptyMsg').style.display = 'none';
+  LAST_GROUPED_ORG = buildGroupedTreeForDisplay_();
   updateBreadcrumb();
   if (currentView === 'tree') renderTree();
   else if (currentView === 'matrix') renderMatrix();
@@ -921,12 +897,19 @@ function renderTree() {
   const levelsHost = document.getElementById('treeLevels');
   levelsHost.innerHTML = '';
   const filteredIds = getFilteredIds();
-  const groupedOrg = buildGroupedTreeForDisplay_();
+  const groupedOrg = LAST_GROUPED_ORG;
 
   let roots = groupedOrg;
   if (focusId) {
     const found = findNode(groupedOrg, focusId);
-    roots = found ? [found] : groupedOrg;
+    if (found && found.isGroupTile) {
+      // Drilling into a group tile expands it into its real individual
+      // members - each rendered as a normal, fully-featured card (eye icon,
+      // Edit Profile, Initiate Transfer all work exactly as for anyone else).
+      roots = found.groupMembers;
+    } else {
+      roots = found ? [found] : groupedOrg;
+    }
   }
 
   const levels = [];
@@ -1062,12 +1045,14 @@ function buildNodeEl(n, filteredIds, isContext) {
     const el = document.createElement('div');
     el.className = 'node group-tile';
     el.id = 'node-' + n.EmployeeID;
+    const subLabel = n.tileType === 'shift-pair' ? 'Back to Back Shift Partners' : 'Dual-reporting';
     el.innerHTML =
       '<div class="group-tile-icon">👥</div>' +
       '<div class="name">' + n.Name + '</div>' +
-      '<div class="role">Dual-reporting</div>' +
-      '<div class="tags"><span class="tag" style="background:' + colorForCluster(n.Cluster) + '">' + (n.Cluster || '').replace('ODC-','') + '</span></div>';
-    el.addEventListener('click', function(ev) { ev.stopPropagation(); openGroupTilePopup_(n); });
+      '<div class="role">' + subLabel + '</div>' +
+      '<div class="tags"><span class="tag" style="background:' + colorForCluster(n.Cluster) + '">' + (n.Cluster || '').replace('ODC-','') + '</span></div>' +
+      '<div class="count-badge">' + n.groupMembers.length + '</div>';
+    el.addEventListener('click', function(ev) { ev.stopPropagation(); focusId = n.EmployeeID; render(); });
     branch.appendChild(el);
     return branch;
   }
@@ -1225,16 +1210,24 @@ function drawConnectors() {
   function walk(nodes) {
     nodes.forEach(n => {
       (n.children || []).forEach(c => {
-        // People with a secondary manager get the merged Y-funnel connector
-        // drawn below instead of this independent primary line, so both
-        // managers visibly converge into one line rather than two separate
-        // curves that could cross other lines unpredictably.
-        if (!c.SecondaryReportsToID) connect(n.EmployeeID, c.EmployeeID, 'solid');
+        // People with a secondary manager (whether an individual not swept
+        // into a tile, or a dual-manager group tile itself) get the merged
+        // Y-funnel connector drawn below instead of this independent primary
+        // line, so both managers visibly converge into one line rather than
+        // two separate curves that could cross other lines unpredictably.
+        const skipPlain = c.SecondaryReportsToID || (c.isGroupTile && c.tileType === 'dual-manager');
+        if (!skipPlain) connect(n.EmployeeID, c.EmployeeID, 'solid');
       });
       walk(n.children || []);
     });
   }
-  walk(focusId ? [findNode(RAW.organogram, focusId)].filter(Boolean) : RAW.organogram);
+  const connectorRoots = (() => {
+    if (!focusId) return LAST_GROUPED_ORG || [];
+    const found = findNode(LAST_GROUPED_ORG || [], focusId);
+    if (found && found.isGroupTile) return found.groupMembers;
+    return found ? [found] : (LAST_GROUPED_ORG || []);
+  })();
+  walk(connectorRoots);
 
   solidContextConnections.forEach(([managerId, rootId]) => connect(managerId, rootId, 'solid'));
   drawIndirectConnectors_(connect);
@@ -1279,16 +1272,36 @@ function flattenTree_(nodes) {
 // see every real individual record.
 let LAST_GROUP_TILES = []; // [{tileId, primaryId, secondaryId}], refreshed each time the grouped tree is built
 function buildGroupedTreeForDisplay_() {
-  const groups = {};
+  const dualManagerGroups = {};
+  const shiftPairGroups = {};
   const groupedIds = new Set();
+  const allPeople = flattenTree_(RAW.organogram);
 
-  flattenTree_(RAW.organogram).forEach(n => {
+  // Pass 1: dual-manager groups (e.g. Expat Advisors overseen by both a
+  // Shift A and Shift B Site Lead). Checked first - takes priority if someone
+  // somehow qualifies for both groupings.
+  allPeople.forEach(n => {
     if (n.Role === 'HSE Advisor' && n.Nationality === 'Expatriate' && n.SecondaryReportsToID && n.ReportsToID) {
       const key = n.ReportsToID + '|' + n.SecondaryReportsToID;
-      if (!groups[key]) groups[key] = { primaryId: n.ReportsToID, secondaryId: n.SecondaryReportsToID, members: [] };
-      groups[key].members.push(n);
+      if (!dualManagerGroups[key]) dualManagerGroups[key] = { primaryId: n.ReportsToID, secondaryId: n.SecondaryReportsToID, members: [] };
+      dualManagerGroups[key].members.push(n);
       groupedIds.add(n.EmployeeID);
     }
+  });
+
+  // Pass 2: Back to Back Shift Partner pairs (e.g. Shift A / Shift B Site
+  // Leads covering the same position on rotation). Both members of a pair
+  // collapse into one tile - skips anyone already absorbed into a
+  // dual-manager group above.
+  allPeople.forEach(n => {
+    if (groupedIds.has(n.EmployeeID) || !n.ShiftPartnerID) return;
+    const partner = allPeople.find(p => p.EmployeeID === n.ShiftPartnerID);
+    if (!partner || groupedIds.has(partner.EmployeeID)) return;
+    const pairKey = [n.EmployeeID, partner.EmployeeID].sort().join('|');
+    if (shiftPairGroups[pairKey]) return;
+    shiftPairGroups[pairKey] = { primaryId: n.ReportsToID, members: [n, partner] };
+    groupedIds.add(n.EmployeeID);
+    groupedIds.add(partner.EmployeeID);
   });
 
   function cloneAndFilter(nodes) {
@@ -1299,14 +1312,15 @@ function buildGroupedTreeForDisplay_() {
   const grouped = cloneAndFilter(RAW.organogram);
 
   LAST_GROUP_TILES = [];
-  Object.keys(groups).forEach(key => {
-    const g = groups[key];
+
+  Object.keys(dualManagerGroups).forEach(key => {
+    const g = dualManagerGroups[key];
     const tile = {
-      EmployeeID: 'group-' + key,
+      EmployeeID: 'group-dm-' + key,
       Name: g.members.length + ' Expat HSE Advisor' + (g.members.length > 1 ? 's' : ''),
       Role: 'HSE Advisor',
       Cluster: g.members[0].Cluster,
-      isGroupTile: true,
+      isGroupTile: true, tileType: 'dual-manager',
       groupMembers: g.members,
       groupSecondaryId: g.secondaryId,
       ReportsToID: g.primaryId,
@@ -1317,7 +1331,28 @@ function buildGroupedTreeForDisplay_() {
       primaryNode.children = primaryNode.children || [];
       primaryNode.children.push(tile);
     }
-    LAST_GROUP_TILES.push({ tileId: tile.EmployeeID, primaryId: g.primaryId, secondaryId: g.secondaryId });
+    LAST_GROUP_TILES.push({ tileId: tile.EmployeeID, tileType: 'dual-manager', primaryId: g.primaryId, secondaryId: g.secondaryId });
+  });
+
+  Object.keys(shiftPairGroups).forEach(key => {
+    const g = shiftPairGroups[key];
+    const roleLabel = g.members[0].Role || 'Staff';
+    const tile = {
+      EmployeeID: 'group-sp-' + key,
+      Name: 'Shift A/B ' + roleLabel + 's',
+      Role: roleLabel,
+      Cluster: g.members[0].Cluster,
+      isGroupTile: true, tileType: 'shift-pair',
+      groupMembers: g.members,
+      ReportsToID: g.primaryId,
+      children: []
+    };
+    const primaryNode = findNode(grouped, g.primaryId);
+    if (primaryNode) {
+      primaryNode.children = primaryNode.children || [];
+      primaryNode.children.push(tile);
+    }
+    LAST_GROUP_TILES.push({ tileId: tile.EmployeeID, tileType: 'shift-pair', primaryId: g.primaryId });
   });
 
   return grouped;
@@ -1371,7 +1406,7 @@ function drawIndirectConnectors_(connect) {
 function updateBreadcrumb() {
   const bc = document.getElementById('breadcrumb');
   if (!focusId) { bc.classList.remove('show'); return; }
-  const node = findNode(RAW.organogram, focusId);
+  const node = findNode(RAW.organogram, focusId) || (LAST_GROUPED_ORG && findNode(LAST_GROUPED_ORG, focusId));
   bc.classList.add('show');
   const suffix = currentView === 'matrix' ? "'s team" : '';
   document.getElementById('crumbTrail').textContent = node ? ('> ' + node.Name + suffix) : '';
@@ -1535,36 +1570,7 @@ function openPopup(n) {
 function closePopup() {
   document.getElementById('overlay').classList.remove('show');
   document.getElementById('popup').classList.remove('show');
-  document.getElementById('groupPopup').classList.remove('show');
   currentEditEmployeeId = null;
-}
-
-function openGroupTilePopup_(groupNode) {
-  document.getElementById('overlay').classList.add('show');
-  document.getElementById('groupPopupTitle').textContent = groupNode.Name;
-  const secondaryManager = findNode(RAW.organogram, groupNode.groupSecondaryId);
-  const primaryManager = findNode(RAW.organogram, groupNode.ReportsToID);
-  const managerLine = (primaryManager && secondaryManager)
-    ? 'Dual-reporting to ' + primaryManager.Name + ' and ' + secondaryManager.Name
-    : '';
-  document.getElementById('groupPopupTitle').innerHTML = groupNode.Name +
-    (managerLine ? '<div class="group-popup-managers">' + managerLine + '</div>' : '');
-
-  const membersHost = document.getElementById('groupPopupMembers');
-  membersHost.innerHTML = groupNode.groupMembers.map(m => `
-    <div class="group-member-row" data-empid="${m.EmployeeID}">
-      <img src="${m.PhotoFileID ? 'https://drive.google.com/thumbnail?id=' + m.PhotoFileID : placeholderImg()}" onerror="this.src='${placeholderImg()}'">
-      <div><div class="group-member-name">${m.Name}</div><div class="group-member-id">${m.EmployeeID}</div></div>
-    </div>
-  `).join('');
-  membersHost.querySelectorAll('.group-member-row').forEach(row => {
-    row.addEventListener('click', function() {
-      const member = groupNode.groupMembers.find(m => m.EmployeeID === row.dataset.empid);
-      if (member) { closePopup(); openPopup(member); }
-    });
-  });
-
-  document.getElementById('groupPopup').classList.add('show');
 }
 
 function ensureFormOptions(cb) {
