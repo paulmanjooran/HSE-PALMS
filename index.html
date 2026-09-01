@@ -8,8 +8,8 @@
 <style>
   :root { color-scheme: light; --dark: #4d555b; --blue: #21409a; --orange: #f58220; }
   * { box-sizing: border-box; }
-  html, body { margin: 0; width: 100%; height: 100%; font-family: 'Inter', sans-serif; }
-  body { display: flex; background: #e7ebef; }
+  html, body { margin: 0; width: 100%; min-height: 100%; font-family: 'Inter', sans-serif; }
+  body { display: flex; background: #e7ebef; align-items: flex-start; }
 
   #sidebar {
     width: 236px; flex-shrink: 0; background: linear-gradient(180deg, #3d444a, var(--dark));
@@ -44,8 +44,8 @@
   .refresh-btn { border: none; background: #f2f4f6; border-radius: 7px; padding: 7px 14px; font-family: 'Manrope'; font-weight: 700; font-size: 11.5px; cursor: pointer; color: var(--dark); }
   .refresh-btn:hover { background: #e7ebef; }
 
-  #frameWrap { flex: 1; position: relative; }
-  iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
+  #frameWrap { position: relative; }
+  iframe { display: block; width: 100%; border: none; }
 
   #loginGate {
     position: fixed; inset: 0; background: linear-gradient(135deg, #4d555b, #21409a); z-index: 9999;
@@ -199,6 +199,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 /* ---------------- SIDEBAR SHELL - loads sibling GitHub pages into the iframe ---------------- */
 let currentPage = 'directory.html';
+let heightObserver = null;
 
 function unlockPortal() {
   document.getElementById('appContent').style.display = 'flex';
@@ -216,6 +217,30 @@ function navigate(page, title, desc) {
 function refreshCurrent() {
   document.getElementById('contentFrame').src = currentPage + '?_r=' + Date.now();
 }
+
+// Same-origin pages (both on github.io) allow direct access to the iframe's
+// own document - no postMessage plumbing needed. Watches the child page's
+// actual content height and resizes the iframe to match, so the OUTER page
+// grows and scrolls as one piece instead of the iframe scrolling internally
+// while the sidebar sits capped at just one viewport's height.
+function syncIframeHeight_() {
+  const iframe = document.getElementById('contentFrame');
+  try {
+    const doc = iframe.contentWindow.document;
+    const setHeight = () => {
+      const h = Math.max(doc.documentElement.scrollHeight, doc.body ? doc.body.scrollHeight : 0);
+      if (h > 0) iframe.style.height = h + 'px';
+    };
+    setHeight();
+    if (heightObserver) heightObserver.disconnect();
+    heightObserver = new ResizeObserver(setHeight);
+    heightObserver.observe(doc.documentElement);
+    if (doc.body) heightObserver.observe(doc.body);
+  } catch (err) {
+    // Cross-origin or not yet loaded - iframe keeps its last-set height.
+  }
+}
+document.getElementById('contentFrame').addEventListener('load', syncIframeHeight_);
 
 document.querySelectorAll('.navitem').forEach(item => {
   item.addEventListener('click', () => navigate(item.dataset.page, item.dataset.title, item.dataset.desc));
