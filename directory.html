@@ -1590,7 +1590,7 @@ function renderMatrix() {
   html += '</tbody></table>';
   host.innerHTML = html;
 
-  host.querySelectorAll('[data-empid]').forEach(chip => {
+  host.querySelectorAll('.avatar-chip[data-empid]').forEach(chip => {
     chip.addEventListener('click', function() {
       const p = RAW.personnel.find(x => x.employeeId === chip.dataset.empid);
       if (p) openPopup(personnelToNodeShape(p));
