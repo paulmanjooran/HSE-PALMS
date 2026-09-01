@@ -302,7 +302,7 @@
   #overlay { position: fixed; inset: 0; background: rgba(20,25,35,0.35); backdrop-filter: blur(3px); z-index: 90; display: none; }
   #overlay.show { display: block; }
   #popup {
-    position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 91; width: 360px;
+    position: fixed; z-index: 91; width: 360px;
     max-height: 88vh; overflow-y: auto;
     background: rgba(255,255,255,0.85); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
     border-radius: 22px; border: 1px solid rgba(255,255,255,0.9); box-shadow: 0 20px 60px rgba(20,30,50,0.3);
@@ -826,14 +826,14 @@ function renderSummary() {
   host.querySelectorAll('tr[data-empid]').forEach(row => {
     row.addEventListener('click', function() {
       const p = RAW.personnel.find(x => String(x.employeeId) === String(row.dataset.empid));
-      if (p) openPopup(personnelToNodeShape(p));
+      if (p) openPopup(personnelToNodeShape(p), row);
     });
   });
   host.querySelectorAll('.eye-btn-inline').forEach(btn => {
     btn.addEventListener('click', function(ev) {
       ev.stopPropagation();
       const p = RAW.personnel.find(x => String(x.employeeId) === String(btn.dataset.empid));
-      if (p) openPopup(personnelToNodeShape(p));
+      if (p) openPopup(personnelToNodeShape(p), btn);
     });
   });
   host.querySelectorAll('.manager-badge-inline[data-manager-id]').forEach(badge => {
@@ -1209,7 +1209,7 @@ function buildNodeEl(n, filteredIds, isContext) {
   el.addEventListener('click', function(ev) { ev.stopPropagation(); focusId = n.EmployeeID; render(); });
 
   const eyeBtn = el.querySelector('.eye-btn');
-  if (eyeBtn) eyeBtn.addEventListener('click', function(ev) { ev.stopPropagation(); openPopup(n); });
+  if (eyeBtn) eyeBtn.addEventListener('click', function(ev) { ev.stopPropagation(); openPopup(n, eyeBtn); });
 
   const managerBadge = el.querySelector('.manager-badge');
   if (managerBadge) managerBadge.addEventListener('click', function(ev) {
@@ -1221,7 +1221,7 @@ function buildNodeEl(n, filteredIds, isContext) {
   if (shiftPartnerBadge) shiftPartnerBadge.addEventListener('click', function(ev) {
     ev.stopPropagation();
     const partner = findNode(RAW.organogram, shiftPartnerBadge.dataset.partnerId);
-    if (partner) openPopup(partner);
+    if (partner) openPopup(partner, shiftPartnerBadge);
   });
 
   branch.appendChild(el);
@@ -1604,14 +1604,14 @@ function renderMatrix() {
   host.querySelectorAll('.avatar-chip[data-empid]').forEach(chip => {
     chip.addEventListener('click', function() {
       const p = RAW.personnel.find(x => String(x.employeeId) === String(chip.dataset.empid));
-      if (p) openPopup(personnelToNodeShape(p));
+      if (p) openPopup(personnelToNodeShape(p), chip);
     });
   });
   host.querySelectorAll('.eye-btn-inline').forEach(btn => {
     btn.addEventListener('click', function(ev) {
       ev.stopPropagation();
       const p = RAW.personnel.find(x => String(x.employeeId) === String(btn.dataset.empid));
-      if (p) openPopup(personnelToNodeShape(p));
+      if (p) openPopup(personnelToNodeShape(p), btn);
     });
   });
   host.querySelectorAll('.manager-badge-inline[data-manager-id]').forEach(badge => {
@@ -1669,7 +1669,49 @@ let currentEditEmployeeId = null;
 let editPhotoBase64 = null, editPhotoMimeType = null;
 let FORM_OPTIONS = null;
 
-function openPopup(n) {
+// Positions the popup right next to whatever was clicked, instead of a fixed
+// viewport-center position. This matters because #popup is position:fixed,
+// which is relative to the IFRAME'S OWN coordinate space - and since the
+// iframe now dynamically grows to match its full content height (so the
+// whole page scrolls as one piece), "50% of that space" could be far below
+// whatever portion the user currently has scrolled into view. Positioning
+// from the trigger's own getBoundingClientRect() avoids that entirely, since
+// both values are computed in the same viewport-relative coordinate space.
+function positionPopupNear_(triggerEl) {
+  const popup = document.getElementById('popup');
+  if (!triggerEl) {
+    popup.style.transform = 'translate(-50%,-50%)';
+    popup.style.top = '50%';
+    popup.style.left = '50%';
+    return;
+  }
+  const rect = triggerEl.getBoundingClientRect();
+  const popupWidth = 360;
+  const margin = 12;
+  const viewportW = window.innerWidth;
+  const viewportH = window.innerHeight;
+
+  // Prefer opening to the right of the trigger; flip to the left if that
+  // would overflow the right edge.
+  let left = rect.right + margin;
+  if (left + popupWidth > viewportW - margin) {
+    left = rect.left - popupWidth - margin;
+  }
+  left = Math.max(margin, Math.min(left, viewportW - popupWidth - margin));
+
+  // Vertical: align near the trigger's top, but keep the whole card within
+  // the visible viewport - clamp rather than let it run off the bottom.
+  const estimatedHeight = Math.min(viewportH * 0.75, 520);
+  let top = rect.top;
+  top = Math.max(margin, Math.min(top, viewportH - estimatedHeight - margin));
+
+  popup.style.transform = 'none';
+  popup.style.left = left + 'px';
+  popup.style.top = top + 'px';
+}
+
+function openPopup(n, triggerEl) {
+  positionPopupNear_(triggerEl);
   currentEditEmployeeId = n.EmployeeID;
   document.getElementById('popImg').src = n._photoUrl || (n.PhotoFileID ? 'https://drive.google.com/thumbnail?id=' + n.PhotoFileID : placeholderImg());
   document.getElementById('popName').textContent = n.Name || '';
