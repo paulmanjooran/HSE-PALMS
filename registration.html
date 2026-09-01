@@ -173,6 +173,9 @@
     <label>Back to Back Shift Partner(Employee ID)- Optional</label>
     <input type="text" id="shiftPartnerId" placeholder="Leave blank if not applicable">
 
+    <label>Secondary Line Manager (Employee ID) - Optional</label>
+    <input type="text" id="secondaryManagerId" placeholder="For stationary staff overseen by two rotating managers (e.g. both Shift A and Shift B Site Leads)">
+
     <label>Line Manager (Employee ID) *</label>
     <input type="text" id="lineManagerId" required>
 
@@ -258,6 +261,7 @@
       shiftType: document.getElementById('shiftType').value,
       nationality: document.getElementById('nationality').value,
       shiftPartnerId: document.getElementById('shiftPartnerId').value.trim(),
+      secondaryManagerId: document.getElementById('secondaryManagerId').value.trim(),
       lineManagerId: document.getElementById('lineManagerId').value.trim(),
       lineManagerName: document.getElementById('lineManagerName').value,
       lineManagerEmail: document.getElementById('lineManagerEmail').value,
