@@ -351,116 +351,8 @@
     .node { width: 118px; }
   }
 </style>
-<style>
-  #loginGate {
-    position: fixed; inset: 0; background: linear-gradient(135deg, #4d555b, #21409a); z-index: 9999;
-    display: flex; align-items: center; justify-content: center; font-family: 'Segoe UI', Arial, sans-serif;
-  }
-  #loginGate .box { background: #fff; border-radius: 16px; padding: 36px; max-width: 380px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
-  #loginGate h2 { margin: 0 0 4px; color: #4d555b; font-size: 19px; }
-  #loginGate .sub { color: #8891a0; font-size: 12.5px; margin-bottom: 22px; }
-  #loginGate label { display: block; font-size: 11.5px; font-weight: 700; color: #8891a0; text-transform: uppercase; margin-top: 14px; margin-bottom: 4px; }
-  #loginGate input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
-  #loginGate button.primary { width: 100%; margin-top: 20px; padding: 12px; background: #21409a; color: #fff; border: none;
-    border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
-  #loginGate button.primary:disabled { background: #aaa; cursor: not-allowed; }
-  #loginGate .forgot-link { text-align: center; margin-top: 14px; font-size: 12.5px; color: #21409a; cursor: pointer; text-decoration: underline; }
-  #loginGate #gateStatus { margin-top: 14px; font-size: 12.5px; padding: 9px 12px; border-radius: 7px; display: none; }
-  #loginGate #gateStatus.err { display: block; background: #fdecea; color: #c62828; }
-  #loginGate #gateStatus.ok { display: block; background: #e8f5e9; color: #2e7d32; }
-  #loginGate #forgotSection { display: none; }
-  #appContent { display: none; }
-</style>
 </head>
 <body>
-<div id="loginGate">
-  <div class="box">
-    <div id="loginSection">
-      <h2>HSE PALMS</h2>
-      <div class="sub">Sign in to continue</div>
-      <label>Username</label>
-      <input type="text" id="gateUsername" value="ATNM HSE" disabled style="background:#f2f4f6;color:#8891a0;">
-      <label>Password</label>
-      <input type="password" id="gatePassword">
-      <button class="primary" id="gateLoginBtn" onclick="attemptLogin()">Sign In</button>
-      <div class="forgot-link" onclick="showForgot()">Forgot password?</div>
-      <div id="gateStatus"></div>
-    </div>
-    <div id="forgotSection">
-      <h2>Forgot Password</h2>
-      <div class="sub">Enter your @altasnim.com email - the password will be sent to you.</div>
-      <label>Email</label>
-      <input type="email" id="forgotEmail" placeholder="yourname@altasnim.com">
-      <button class="primary" id="forgotBtn" onclick="attemptForgot()">Send Password</button>
-      <div class="forgot-link" onclick="showLogin()">Back to sign in</div>
-      <div id="gateStatus2"></div>
-    </div>
-  </div>
-</div>
-
-<script>
-(function() {
-  function setGateStatus(id, msg, cls) {
-    const el = document.getElementById(id);
-    el.className = cls; el.textContent = msg;
-  }
-  window.showForgot = function() {
-    document.getElementById('loginSection').style.display = 'none';
-    document.getElementById('forgotSection').style.display = 'block';
-  };
-  window.showLogin = function() {
-    document.getElementById('forgotSection').style.display = 'none';
-    document.getElementById('loginSection').style.display = 'block';
-  };
-  window.attemptLogin = function() {
-    const username = document.getElementById('gateUsername').value.trim();
-    const password = document.getElementById('gatePassword').value;
-    const btn = document.getElementById('gateLoginBtn');
-    btn.disabled = true; btn.textContent = 'Checking...';
-    fetch(BASE_URL + '?action=checkLogin&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password))
-      .then(function(res) { return res.json(); })
-      .then(function(result) {
-        btn.disabled = false; btn.textContent = 'Sign In';
-        if (!result.success) { setGateStatus('gateStatus', result.error, 'err'); return; }
-        sessionStorage.setItem('hsePalmsAuth', 'true');
-        document.getElementById('loginGate').style.display = 'none';
-        document.getElementById('appContent').style.display = 'block';
-        if (typeof onGateUnlocked === 'function') onGateUnlocked();
-      })
-      .catch(function(err) {
-        btn.disabled = false; btn.textContent = 'Sign In';
-        setGateStatus('gateStatus', 'Login failed: ' + err.message, 'err');
-      });
-  };
-  window.attemptForgot = function() {
-    const email = document.getElementById('forgotEmail').value.trim();
-    const btn = document.getElementById('forgotBtn');
-    btn.disabled = true; btn.textContent = 'Sending...';
-    fetch(BASE_URL + '?action=forgotPassword&email=' + encodeURIComponent(email))
-      .then(function(res) { return res.json(); })
-      .then(function(result) {
-        btn.disabled = false; btn.textContent = 'Send Password';
-        setGateStatus('gateStatus2', result.success ? result.message : result.error, result.success ? 'ok' : 'err');
-      })
-      .catch(function(err) {
-        btn.disabled = false; btn.textContent = 'Send Password';
-        setGateStatus('gateStatus2', 'Failed: ' + err.message, 'err');
-      });
-  };
-  // Skip the gate if already authenticated this browser session.
-  // Deferred to DOMContentLoaded so onGateUnlocked (defined later in the page,
-  // after the main content script) is guaranteed to exist by the time we call it.
-  document.addEventListener('DOMContentLoaded', function() {
-    if (sessionStorage.getItem('hsePalmsAuth') === 'true') {
-      document.getElementById('loginGate').style.display = 'none';
-      document.getElementById('appContent').style.display = 'block';
-      if (typeof onGateUnlocked === 'function') onGateUnlocked();
-    }
-  });
-})();
-</script>
-
-<div id="appContent">
 
 <div id="topbar">
   <div>
@@ -632,7 +524,7 @@
 </div>
 
 <script>
-const BASE_URL = "https://script.google.com/macros/s/AKfycbxY_ju_CjS-6vBox8XZ7dJe9KtHXpBcSEBSABxmrS1IGAfcd5O10qwJTEN3JfskehJX/exec";
+const BASE_URL = "<?= baseUrl ?>";
 let RAW = { personnel: [], organogram: [], leave: [] };
 let currentView = 'tree';
 let treeZoom = 1;
@@ -910,8 +802,17 @@ function renderTree() {
       // members - each rendered as a normal, fully-featured card (eye icon,
       // Edit Profile, Initiate Transfer all work exactly as for anyone else).
       roots = found.groupMembers;
+    } else if (found) {
+      roots = [found];
     } else {
-      roots = found ? [found] : groupedOrg;
+      // Not found in the grouped tree at all - this happens when someone was
+      // absorbed into a group tile (so they don't exist as a standalone node
+      // there), but they DO exist in the real, ungrouped tree. Without this
+      // fallback, clicking to drill further into an already-expanded group
+      // member would silently jump back to the root view instead of actually
+      // drilling into them.
+      const realNode = findNode(RAW.organogram, focusId);
+      roots = realNode ? [realNode] : groupedOrg;
     }
   }
 
@@ -1071,8 +972,8 @@ function buildNodeEl(n, filteredIds, isContext) {
     const el = document.createElement('div');
     el.className = 'node group-tile';
     el.id = 'node-' + n.EmployeeID;
-    const designation = n.tileType === 'shift-pair' ? (n.Role || 'Staff') + 's' : n.Role;
-    const shiftLabel = n.tileType === 'shift-pair' ? 'Shift A / Shift B' : (n.groupMembers[0].ShiftType || 'General');
+    const designation = n.Role;
+    const shiftLabel = n.ShiftType || (n.groupMembers[0] && n.groupMembers[0].ShiftType) || 'General';
     el.innerHTML =
       '<div class="group-tile-icon">👥</div>' +
       '<div class="group-tile-labels">' +
@@ -1101,12 +1002,18 @@ function buildNodeEl(n, filteredIds, isContext) {
   const clusterColor = colorForCluster(n.Cluster);
   const shiftPartner = n.ShiftPartnerID ? findNode(RAW.organogram, n.ShiftPartnerID) : null;
 
+  // Reporting count reflects actual PEOPLE, not tile count - a Site Lead with
+  // a National Advisor group (5 people) and a shared Expat group (2 people)
+  // shows "7 reports", not "2" (which would just be counting the two tiles).
+  const effectiveReportCount = (n.children || []).reduce((sum, c) =>
+    sum + (c.isGroupTile ? c.groupMembers.length : 1), 0);
+
   el.innerHTML =
     '<img src="' + (photo || placeholderImg()) + '" onerror="this.src=\'' + placeholderImg() + '\'">' +
     '<button class="eye-btn" title="View profile" data-empid="' + n.EmployeeID + '">👁️</button>' +
     '<div class="name">' + (n.Name || '') + '</div>' +
     '<div class="role">' + (n.Role || '') + '</div>' +
-    ((n.children && n.children.length) ? '<div class="manager-badge" data-manager-id="' + n.EmployeeID + '" title="View this person\'s team in People Matrix">🌳 ' + n.children.length + ' report' + (n.children.length > 1 ? 's' : '') + '</div>' : '') +
+    (effectiveReportCount ? '<div class="manager-badge" data-manager-id="' + n.EmployeeID + '" title="View this person\'s team in People Matrix">🌳 ' + effectiveReportCount + ' report' + (effectiveReportCount > 1 ? 's' : '') + '</div>' : '') +
     (shiftPartner ? '<div class="shift-partner-badge" data-partner-id="' + shiftPartner.EmployeeID + '" title="Shift rotation partner">🔄 ' + shiftPartner.Name + '</div>' : '') +
     '<div class="tags">' +
       '<span class="tag" style="background:' + clusterColor + '">' + (n.Cluster || '').replace('ODC-','') + '</span>' +
@@ -1114,7 +1021,7 @@ function buildNodeEl(n, filteredIds, isContext) {
       (n.RotationStatus === 'overdue' ? '<span class="tag" style="background:#c62828;">Rotation Overdue</span>' : '') +
       (n.RotationStatus === 'approaching' ? '<span class="tag" style="background:#f58220;">Rotation Due Soon</span>' : '') +
     '</div>' +
-    ((n.children && n.children.length) ? '<div class="count-badge">' + n.children.length + '</div>' : '');
+    (effectiveReportCount ? '<div class="count-badge">' + effectiveReportCount + '</div>' : '');
 
   el.addEventListener('click', function(ev) { ev.stopPropagation(); focusId = n.EmployeeID; render(); });
 
@@ -1255,7 +1162,9 @@ function drawConnectors() {
     if (!focusId) return LAST_GROUPED_ORG || [];
     const found = findNode(LAST_GROUPED_ORG || [], focusId);
     if (found && found.isGroupTile) return found.groupMembers;
-    return found ? [found] : (LAST_GROUPED_ORG || []);
+    if (found) return [found];
+    const realNode = findNode(RAW.organogram, focusId);
+    return realNode ? [realNode] : (LAST_GROUPED_ORG || []);
   })();
   walk(connectorRoots);
 
@@ -1303,12 +1212,12 @@ function flattenTree_(nodes) {
 let LAST_GROUP_TILES = []; // [{tileId, primaryId, secondaryId}], refreshed each time the grouped tree is built
 function buildGroupedTreeForDisplay_() {
   const dualManagerGroups = {};
-  const shiftPairGroups = {};
+  const nationalShiftGroups = {}; // one per Site Lead - their own direct National HSE Advisor reports
   const groupedIds = new Set();
   const allPeople = flattenTree_(RAW.organogram);
 
-  // Pass 1: dual-manager groups (e.g. Expat Advisors overseen by both a
-  // Shift A and Shift B Site Lead). Checked first - takes priority if someone
+  // Pass 1: dual-manager groups (Expat Advisors overseen by both a Shift A
+  // and Shift B Site Lead). Checked first - takes priority if someone
   // somehow qualifies for both groupings.
   allPeople.forEach(n => {
     if (n.Role === 'HSE Advisor' && n.Nationality === 'Expatriate' && n.SecondaryReportsToID && n.ReportsToID) {
@@ -1319,19 +1228,19 @@ function buildGroupedTreeForDisplay_() {
     }
   });
 
-  // Pass 2: Back to Back Shift Partner pairs (e.g. Shift A / Shift B Site
-  // Leads covering the same position on rotation). Both members of a pair
-  // collapse into one tile - skips anyone already absorbed into a
-  // dual-manager group above.
+  // Pass 2: National HSE Advisor "Shift Group" - one tile per Site HSE Lead,
+  // containing that lead's own direct National-nationality Advisor reports.
+  // Site Leads themselves stay as separate individual people - this groups
+  // their REPORTS, not the leads.
   allPeople.forEach(n => {
-    if (groupedIds.has(n.EmployeeID) || !n.ShiftPartnerID) return;
-    const partner = allPeople.find(p => p.EmployeeID === n.ShiftPartnerID);
-    if (!partner || groupedIds.has(partner.EmployeeID)) return;
-    const pairKey = [n.EmployeeID, partner.EmployeeID].sort().join('|');
-    if (shiftPairGroups[pairKey]) return;
-    shiftPairGroups[pairKey] = { primaryId: n.ReportsToID, members: [n, partner] };
-    groupedIds.add(n.EmployeeID);
-    groupedIds.add(partner.EmployeeID);
+    if (groupedIds.has(n.EmployeeID)) return;
+    if (n.Role === 'HSE Advisor' && n.Nationality === 'National' && n.ReportsToID) {
+      const manager = allPeople.find(m => m.EmployeeID === n.ReportsToID);
+      if (!manager || manager.Role !== 'HSE Site Lead') return;
+      if (!nationalShiftGroups[n.ReportsToID]) nationalShiftGroups[n.ReportsToID] = { primaryId: n.ReportsToID, members: [] };
+      nationalShiftGroups[n.ReportsToID].members.push(n);
+      groupedIds.add(n.EmployeeID);
+    }
   });
 
   function cloneAndFilter(nodes) {
@@ -1364,15 +1273,17 @@ function buildGroupedTreeForDisplay_() {
     LAST_GROUP_TILES.push({ tileId: tile.EmployeeID, tileType: 'dual-manager', primaryId: g.primaryId, secondaryId: g.secondaryId });
   });
 
-  Object.keys(shiftPairGroups).forEach(key => {
-    const g = shiftPairGroups[key];
-    const roleLabel = g.members[0].Role || 'Staff';
+  Object.keys(nationalShiftGroups).forEach(leadId => {
+    const g = nationalShiftGroups[leadId];
+    const leadNode = allPeople.find(p => p.EmployeeID === leadId);
+    const shiftLabel = (leadNode && leadNode.ShiftType) ? leadNode.ShiftType : 'Shift';
     const tile = {
-      EmployeeID: 'group-sp-' + key,
-      Name: 'Shift A/B ' + roleLabel + 's',
-      Role: roleLabel,
+      EmployeeID: 'group-ns-' + leadId,
+      Name: shiftLabel + ' National HSE Advisors',
+      Role: 'HSE Advisor',
       Cluster: g.members[0].Cluster,
-      isGroupTile: true, tileType: 'shift-pair',
+      ShiftType: shiftLabel,
+      isGroupTile: true, tileType: 'national-shift',
       groupMembers: g.members,
       ReportsToID: g.primaryId,
       children: []
@@ -1382,7 +1293,7 @@ function buildGroupedTreeForDisplay_() {
       primaryNode.children = primaryNode.children || [];
       primaryNode.children.push(tile);
     }
-    LAST_GROUP_TILES.push({ tileId: tile.EmployeeID, tileType: 'shift-pair', primaryId: g.primaryId });
+    LAST_GROUP_TILES.push({ tileId: tile.EmployeeID, tileType: 'national-shift', primaryId: g.primaryId });
   });
 
   return grouped;
@@ -1854,9 +1765,6 @@ function downloadA3() {
 }
 
 loadData();
-
-window.onGateUnlocked = loadData;
 </script>
-</div>
 </body>
 </html>
