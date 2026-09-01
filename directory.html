@@ -179,7 +179,17 @@
                 0 14px 34px rgba(30,40,60,0.14);
     width: 188px; text-align: left;
   }
-  .node.group-tile .group-tile-icon { font-size: 22px; text-align: center; margin-bottom: 6px; }
+  .node.group-tile .avatar-stack { display: flex; justify-content: center; margin-bottom: 8px; }
+  .node.group-tile .avatar-stack img {
+    width: 30px; height: 30px; border-radius: 50%; object-fit: cover; background: #dfe3e7;
+    border: 2px solid #fff; margin-left: -10px; box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  }
+  .node.group-tile .avatar-stack img:first-child { margin-left: 0; }
+  .node.group-tile .avatar-stack-more {
+    width: 30px; height: 30px; border-radius: 50%; background: #00796b; color: #fff;
+    font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center;
+    border: 2px solid #fff; margin-left: -10px; box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  }
   .node.group-tile .group-tile-labels { display: flex; flex-direction: column; gap: 3px; }
   .node.group-tile .gt-row { display: flex; justify-content: space-between; gap: 8px; font-size: 10.5px; }
   .node.group-tile .gt-key { color: #4d8f89; font-weight: 600; flex-shrink: 0; }
@@ -1118,8 +1128,16 @@ function buildNodeEl(n, filteredIds, isContext) {
     el.id = 'node-' + n.EmployeeID;
     const designation = n.Role;
     const shiftLabel = n.ShiftType || (n.groupMembers[0] && n.groupMembers[0].ShiftType) || 'General';
+    const visibleMembers = n.groupMembers.slice(0, 4);
+    const overflowCount = n.groupMembers.length - visibleMembers.length;
+    const avatarStackHtml = '<div class="avatar-stack">' +
+      visibleMembers.map(m =>
+        '<img src="' + (m.PhotoFileID ? 'https://drive.google.com/thumbnail?id=' + m.PhotoFileID : placeholderImg()) + '" onerror="this.src=\'' + placeholderImg() + '\'" title="' + m.Name + '">'
+      ).join('') +
+      (overflowCount > 0 ? '<span class="avatar-stack-more">+' + overflowCount + '</span>' : '') +
+      '</div>';
     el.innerHTML =
-      '<div class="group-tile-icon">👥</div>' +
+      avatarStackHtml +
       '<div class="group-tile-labels">' +
         '<div class="gt-row"><span class="gt-key">Name</span><span class="gt-val">' + n.Name + '</span></div>' +
         '<div class="gt-row"><span class="gt-key">Designation</span><span class="gt-val">' + designation + '</span></div>' +
