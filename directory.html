@@ -208,10 +208,12 @@
   }
   .shift-partner-badge:hover { background: rgba(0,121,107,0.22); }
   .eye-btn {
-    position: absolute; top: 6px; left: 6px; border: none; background: rgba(255,255,255,0.85); width: 22px; height: 22px;
-    border-radius: 50%; font-size: 11px; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.15); z-index: 2;
+    position: absolute; top: 6px; left: 6px; border: none; background: rgba(255,255,255,0.85); width: 26px; height: 26px;
+    border-radius: 50%; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.15); z-index: 2;
+    display: flex; align-items: center; justify-content: center;
   }
   .eye-btn:hover { background: #fff; transform: scale(1.08); }
+  .eye-btn svg { width: 15px; height: 15px; }
 
   /* ---------- matrix ---------- */
   #matrixWrap { display: none; overflow-x: auto; padding-bottom: 40px; }
@@ -290,10 +292,11 @@
   .avatar-chip img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; background: #dfe3e7; }
   .avatar-chip span { font-size: 11.5px; font-weight: 600; }
   .eye-btn-inline {
-    border: none; background: transparent; font-size: 10px; cursor: pointer; padding: 0 2px; line-height: 1;
-    opacity: 0.55; flex-shrink: 0;
+    border: none; background: transparent; cursor: pointer; padding: 3px; line-height: 1;
+    opacity: 0.55; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
   }
   .eye-btn-inline:hover { opacity: 1; }
+  .eye-btn-inline svg { width: 13px; height: 13px; }
 
   /* ---------- popup ---------- */
   #overlay { position: fixed; inset: 0; background: rgba(20,25,35,0.35); backdrop-filter: blur(3px); z-index: 90; display: none; }
@@ -534,7 +537,7 @@
   <div class="legend-title">Legend</div>
   <div class="legend-row"><span class="legend-swatch solid"></span> Direct reporting</div>
   <div class="legend-row"><span class="legend-swatch dotted"></span> Indirect reporting (→ ODC)</div>
-  <div class="legend-row"><span class="legend-icon">👁️</span> View profile</div>
+  <div class="legend-row"><span class="legend-icon"><svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" stroke="#4d555b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="#4d555b" stroke-width="2"/></svg></span> View profile</div>
   <div class="legend-row"><span class="legend-icon">🌳</span> View this person's team</div>
   <div class="legend-row"><span class="legend-swatch partner"></span> Shift rotation partner</div>
   <div class="legend-row"><span class="legend-icon">👥</span> Group - click to expand</div>
@@ -643,6 +646,14 @@
 
 <script>
 const BASE_URL = "https://script.google.com/macros/s/AKfycbxY_ju_CjS-6vBox8XZ7dJe9KtHXpBcSEBSABxmrS1IGAfcd5O10qwJTEN3JfskehJX/exec";
+// Clean, professional SVG eye icon - renders identically across every browser
+// and OS, unlike the emoji it replaces (which can vary in size/rendering
+// across platforms in ways that shrink or shift the actual clickable area).
+const EYE_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+  '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" stroke="#4d555b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+  '<circle cx="12" cy="12" r="3" stroke="#4d555b" stroke-width="2"/>' +
+  '</svg>';
+
 let RAW = { personnel: [], organogram: [], leave: [] };
 let currentView = 'tree';
 let treeZoom = 1;
@@ -782,7 +793,7 @@ function renderSummary() {
       <tr data-empid="${p.employeeId}">
         <td>
           <div class="summary-name-cell">
-            <button class="eye-btn-inline" data-empid="${p.employeeId}" title="View profile">👁️</button>
+            <button class="eye-btn-inline" data-empid="${p.employeeId}" title="View profile">${EYE_ICON_SVG}</button>
             <img src="${p.photoUrl || placeholderImg()}" onerror="this.src='${placeholderImg()}'">
             <span>${p.name || ''}</span>
             ${MANAGER_IDS.has(p.employeeId) ? '<span class="manager-badge-inline" data-manager-id="' + p.employeeId + '" title="View this person\'s team">🌳</span>' : ''}
@@ -1182,7 +1193,7 @@ function buildNodeEl(n, filteredIds, isContext) {
 
   el.innerHTML =
     '<img src="' + (photo || placeholderImg()) + '" onerror="this.src=\'' + placeholderImg() + '\'">' +
-    '<button class="eye-btn" title="View profile" data-empid="' + n.EmployeeID + '">👁️</button>' +
+    '<button class="eye-btn" title="View profile" data-empid="' + n.EmployeeID + '">' + EYE_ICON_SVG + '</button>' +
     '<div class="name">' + (n.Name || '') + '</div>' +
     '<div class="role">' + (n.Role || '') + '</div>' +
     (effectiveReportCount ? '<div class="manager-badge" data-manager-id="' + n.EmployeeID + '" title="View this person\'s team in People Matrix">🌳 ' + effectiveReportCount + ' report' + (effectiveReportCount > 1 ? 's' : '') + '</div>' : '') +
@@ -1631,7 +1642,7 @@ function avatarChipHtml(p) {
   const photo = p.photoUrl || placeholderImg();
   const managerIcon = MANAGER_IDS.has(p.employeeId) ? '<span class="manager-badge-inline" data-manager-id="' + p.employeeId + '" title="View this person\'s team">🌳</span>' : '';
   return '<span class="avatar-chip" data-empid="' + p.employeeId + '">' +
-    '<button class="eye-btn-inline" data-empid="' + p.employeeId + '" title="View profile">👁️</button>' +
+    '<button class="eye-btn-inline" data-empid="' + p.employeeId + '" title="View profile">' + EYE_ICON_SVG + '</button>' +
     '<img src="' + photo + '" onerror="this.src=\'' + placeholderImg() + '\'"><span>' + (p.name || '') + '</span>' + managerIcon + '</span>';
 }
 
