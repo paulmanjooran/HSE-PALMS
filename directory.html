@@ -30,7 +30,7 @@
   ::-webkit-scrollbar-thumb:hover { background: linear-gradient(135deg, #1a3480, #d96f10); background-clip: padding-box; }
   * { scrollbar-width: thin; scrollbar-color: var(--blue) rgba(255,255,255,0.25); }
   body {
-    margin: 0; min-height: 100vh; font-family: 'Inter', sans-serif; color: var(--dark);
+    margin: 0; font-family: 'Inter', sans-serif; color: var(--dark);
     background:
       radial-gradient(circle at 8% 10%, rgba(33,64,154,0.30), transparent 42%),
       radial-gradient(circle at 92% 12%, rgba(245,130,32,0.28), transparent 45%),
@@ -129,13 +129,12 @@
 
   /* ---------- tree ---------- */
   #treeCanvas {
-    position: relative; overflow-x: auto; overflow-y: auto; padding-bottom: 40px; min-width: 100%;
-    min-height: calc(100vh - 170px);
+    position: relative; overflow-x: auto; padding-bottom: 40px; min-width: 100%;
   }
   svg#connectors { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
-  .tree-level { display: flex; justify-content: center; gap: 36px; margin-bottom: 64px; position: relative; z-index: 2; flex-wrap: wrap; }
+  .tree-level { display: flex; justify-content: center; gap: 36px; margin-bottom: 44px; position: relative; z-index: 2; flex-wrap: wrap; }
   .tree-level.left-align-row { justify-content: flex-start; padding-left: 18%; }
-  .tree-level.odc-solo-row { margin-bottom: 20px; }
+  .tree-level.odc-solo-row { margin-top: -32px; margin-bottom: 20px; }
   .tree-level.context-level { margin-bottom: 34px; }
   .node.context-node { opacity: 0.6; border: 1px dashed #8891a0; }
   .tree-branch.odc-half-level .node { margin-top: -46px; }
@@ -205,9 +204,9 @@
   .eye-btn:hover { background: #fff; transform: scale(1.08); }
 
   /* ---------- matrix ---------- */
-  #matrixWrap { display: none; overflow-x: auto; overflow-y: auto; padding-bottom: 40px; min-height: calc(100vh - 170px); }
+  #matrixWrap { display: none; overflow-x: auto; padding-bottom: 40px; }
   #matrixWrap.show { display: block; }
-  #summaryWrap { display: none; overflow-y: auto; padding-bottom: 40px; min-height: calc(100vh - 170px); }
+  #summaryWrap { display: none; padding-bottom: 40px; }
   #summaryWrap.show { display: block; }
   .summary-cluster { margin-bottom: 14px; }
   .workforce-summary { margin-bottom: 30px; }
@@ -351,8 +350,116 @@
     .node { width: 118px; }
   }
 </style>
+<style>
+  #loginGate {
+    position: fixed; inset: 0; background: linear-gradient(135deg, #4d555b, #21409a); z-index: 9999;
+    display: flex; align-items: center; justify-content: center; font-family: 'Segoe UI', Arial, sans-serif;
+  }
+  #loginGate .box { background: #fff; border-radius: 16px; padding: 36px; max-width: 380px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+  #loginGate h2 { margin: 0 0 4px; color: #4d555b; font-size: 19px; }
+  #loginGate .sub { color: #8891a0; font-size: 12.5px; margin-bottom: 22px; }
+  #loginGate label { display: block; font-size: 11.5px; font-weight: 700; color: #8891a0; text-transform: uppercase; margin-top: 14px; margin-bottom: 4px; }
+  #loginGate input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+  #loginGate button.primary { width: 100%; margin-top: 20px; padding: 12px; background: #21409a; color: #fff; border: none;
+    border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  #loginGate button.primary:disabled { background: #aaa; cursor: not-allowed; }
+  #loginGate .forgot-link { text-align: center; margin-top: 14px; font-size: 12.5px; color: #21409a; cursor: pointer; text-decoration: underline; }
+  #loginGate #gateStatus { margin-top: 14px; font-size: 12.5px; padding: 9px 12px; border-radius: 7px; display: none; }
+  #loginGate #gateStatus.err { display: block; background: #fdecea; color: #c62828; }
+  #loginGate #gateStatus.ok { display: block; background: #e8f5e9; color: #2e7d32; }
+  #loginGate #forgotSection { display: none; }
+  #appContent { display: none; }
+</style>
 </head>
 <body>
+<div id="loginGate">
+  <div class="box">
+    <div id="loginSection">
+      <h2>HSE PALMS</h2>
+      <div class="sub">Sign in to continue</div>
+      <label>Username</label>
+      <input type="text" id="gateUsername" value="ATNM HSE" disabled style="background:#f2f4f6;color:#8891a0;">
+      <label>Password</label>
+      <input type="password" id="gatePassword">
+      <button class="primary" id="gateLoginBtn" onclick="attemptLogin()">Sign In</button>
+      <div class="forgot-link" onclick="showForgot()">Forgot password?</div>
+      <div id="gateStatus"></div>
+    </div>
+    <div id="forgotSection">
+      <h2>Forgot Password</h2>
+      <div class="sub">Enter your @altasnim.com email - the password will be sent to you.</div>
+      <label>Email</label>
+      <input type="email" id="forgotEmail" placeholder="yourname@altasnim.com">
+      <button class="primary" id="forgotBtn" onclick="attemptForgot()">Send Password</button>
+      <div class="forgot-link" onclick="showLogin()">Back to sign in</div>
+      <div id="gateStatus2"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  function setGateStatus(id, msg, cls) {
+    const el = document.getElementById(id);
+    el.className = cls; el.textContent = msg;
+  }
+  window.showForgot = function() {
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('forgotSection').style.display = 'block';
+  };
+  window.showLogin = function() {
+    document.getElementById('forgotSection').style.display = 'none';
+    document.getElementById('loginSection').style.display = 'block';
+  };
+  window.attemptLogin = function() {
+    const username = document.getElementById('gateUsername').value.trim();
+    const password = document.getElementById('gatePassword').value;
+    const btn = document.getElementById('gateLoginBtn');
+    btn.disabled = true; btn.textContent = 'Checking...';
+    fetch(BASE_URL + '?action=checkLogin&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password))
+      .then(function(res) { return res.json(); })
+      .then(function(result) {
+        btn.disabled = false; btn.textContent = 'Sign In';
+        if (!result.success) { setGateStatus('gateStatus', result.error, 'err'); return; }
+        sessionStorage.setItem('hsePalmsAuth', 'true');
+        document.getElementById('loginGate').style.display = 'none';
+        document.getElementById('appContent').style.display = 'block';
+        if (typeof onGateUnlocked === 'function') onGateUnlocked();
+      })
+      .catch(function(err) {
+        btn.disabled = false; btn.textContent = 'Sign In';
+        setGateStatus('gateStatus', 'Login failed: ' + err.message, 'err');
+      });
+  };
+  window.attemptForgot = function() {
+    const email = document.getElementById('forgotEmail').value.trim();
+    const btn = document.getElementById('forgotBtn');
+    btn.disabled = true; btn.textContent = 'Sending...';
+    fetch(BASE_URL + '?action=forgotPassword&email=' + encodeURIComponent(email))
+      .then(function(res) { return res.json(); })
+      .then(function(result) {
+        btn.disabled = false; btn.textContent = 'Send Password';
+        setGateStatus('gateStatus2', result.success ? result.message : result.error, result.success ? 'ok' : 'err');
+      })
+      .catch(function(err) {
+        btn.disabled = false; btn.textContent = 'Send Password';
+        setGateStatus('gateStatus2', 'Failed: ' + err.message, 'err');
+      });
+  };
+  // Skip the gate if already authenticated this browser session.
+  // Deferred to DOMContentLoaded so onGateUnlocked (defined later in the page,
+  // after the main content script) is guaranteed to exist by the time we call it.
+  document.addEventListener('DOMContentLoaded', function() {
+    if (sessionStorage.getItem('hsePalmsAuth') === 'true') {
+      document.getElementById('loginGate').style.display = 'none';
+      document.getElementById('appContent').style.display = 'block';
+      if (typeof onGateUnlocked === 'function') onGateUnlocked();
+    }
+  });
+})();
+</script>
+
+<div id="appContent">
 
 <div id="topbar">
   <div>
@@ -416,10 +523,11 @@
 <div id="treeLegend">
   <div class="legend-title">Legend</div>
   <div class="legend-row"><span class="legend-swatch solid"></span> Direct reporting</div>
-  <div class="legend-row"><span class="legend-swatch dotted"></span> Indirect reporting</div>
+  <div class="legend-row"><span class="legend-swatch dotted"></span> Indirect reporting (→ ODC)</div>
   <div class="legend-row"><span class="legend-icon">👁️</span> View profile</div>
   <div class="legend-row"><span class="legend-icon">🌳</span> View this person's team</div>
   <div class="legend-row"><span class="legend-swatch partner"></span> Shift rotation partner</div>
+  <div class="legend-row"><span class="legend-icon">👥</span> Group - click to expand</div>
 </div>
 
 <div id="overlay" onclick="closePopup()"></div>
@@ -524,7 +632,7 @@
 </div>
 
 <script>
-const BASE_URL = "<?= baseUrl ?>";
+const BASE_URL = "https://script.google.com/macros/s/AKfycbxY_ju_CjS-6vBox8XZ7dJe9KtHXpBcSEBSABxmrS1IGAfcd5O10qwJTEN3JfskehJX/exec";
 let RAW = { personnel: [], organogram: [], leave: [] };
 let currentView = 'tree';
 let treeZoom = 1;
@@ -1069,9 +1177,14 @@ function drawConnectors() {
   svg.removeAttribute('width');
   svg.removeAttribute('height');
   svg.innerHTML =
-    '<defs><linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">' +
+    '<defs>' +
+    '<linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">' +
     '<stop offset="0%" stop-color="#21409a"/><stop offset="100%" stop-color="#f58220"/>' +
-    '</linearGradient></defs>';
+    '</linearGradient>' +
+    '<marker id="dottedArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">' +
+    '<path d="M 0 0 L 10 5 L 0 10 z" fill="#8891a0"/>' +
+    '</marker>' +
+    '</defs>';
 
   // style: 'solid' = direct reporting line; 'dotted' = indirect/dotted-line reporting;
   // 'partner' = shift rotation pairing (not a reporting relationship at all - two
@@ -1096,6 +1209,7 @@ function drawConnectors() {
       pathEl.setAttribute('stroke-width', '1.6');
       pathEl.setAttribute('stroke-dasharray', '5,4');
       pathEl.setAttribute('opacity', '0.65');
+      pathEl.setAttribute('marker-start', 'url(#dottedArrow)');
     } else if (style === 'partner') {
       pathEl.setAttribute('stroke', '#00796b');
       pathEl.setAttribute('stroke-width', '1.8');
@@ -1765,6 +1879,9 @@ function downloadA3() {
 }
 
 loadData();
+
+window.onGateUnlocked = loadData;
 </script>
+</div>
 </body>
 </html>
