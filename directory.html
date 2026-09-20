@@ -25,10 +25,6 @@
      washed-out, hazy appearance in exported images. This neutralizes blur
      and forces solid backgrounds everywhere it's used, for captures only -
      the live, on-screen app is completely unaffected. */
-  body.screenshot-mode * {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
   body.screenshot-mode #topbar,
   body.screenshot-mode #filterbar,
   body.screenshot-mode #treeLegend,
@@ -40,6 +36,8 @@
   body.screenshot-mode .avatar-chip,
   body.screenshot-mode #popup {
     background: #ffffff !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
   /* Visible, styled scroll/pan bars - default browser scrollbars are thin and
      easy to miss, especially for the horizontal pan needed on wide content
