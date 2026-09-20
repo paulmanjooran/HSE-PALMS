@@ -18,6 +18,29 @@
     --glass-strong: rgba(255,255,255,0.75);
   }
   * { box-sizing: border-box; }
+  /* Applied only during screenshot/PDF capture (see screenshotEl/downloadA3).
+     html2canvas cannot render backdrop-filter at all, so the app's
+     glassmorphism panels - which rely on blur to look crisp - instead show
+     their raw translucent background with no blur underneath, producing a
+     washed-out, hazy appearance in exported images. This neutralizes blur
+     and forces solid backgrounds everywhere it's used, for captures only -
+     the live, on-screen app is completely unaffected. */
+  body.screenshot-mode * {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  body.screenshot-mode #topbar,
+  body.screenshot-mode #filterbar,
+  body.screenshot-mode #treeLegend,
+  body.screenshot-mode .node:not(.group-tile),
+  body.screenshot-mode #zoomControls,
+  body.screenshot-mode table.summary-table td,
+  body.screenshot-mode table.ws-table td,
+  body.screenshot-mode .summary-cluster-header,
+  body.screenshot-mode .avatar-chip,
+  body.screenshot-mode #popup {
+    background: #ffffff !important;
+  }
   /* Visible, styled scroll/pan bars - default browser scrollbars are thin and
      easy to miss, especially for the horizontal pan needed on wide content
      (Team Tree with many siblings, People Matrix with many cluster columns). */
@@ -1942,14 +1965,16 @@ function embedPhotosForExport_(container) {
 
 function screenshotEl(elId, filename) {
   const el = document.getElementById(elId);
+  document.body.classList.add('screenshot-mode');
   embedPhotosForExport_(el).then(restore => {
     html2canvas(el, { backgroundColor: '#eef1f4', scale: 2, useCORS: true, allowTaint: false }).then(canvas => {
       restore();
+      document.body.classList.remove('screenshot-mode');
       const link = document.createElement('a');
       link.download = filename + '-' + Date.now() + '.png';
       link.href = canvas.toDataURL('image/png');
       link.click();
-    }).catch(() => restore());
+    }).catch(() => { restore(); document.body.classList.remove('screenshot-mode'); });
   });
 }
 
@@ -1960,9 +1985,11 @@ function downloadA3() {
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       const treeEl = document.getElementById('treeCanvas');
+      document.body.classList.add('screenshot-mode');
       embedPhotosForExport_(treeEl).then(restore => {
         html2canvas(treeEl, { backgroundColor: '#eef1f4', scale: 2, useCORS: true, allowTaint: false }).then(canvas => {
           restore();
+          document.body.classList.remove('screenshot-mode');
           const { jsPDF } = window.jspdf;
           const pdf = new jsPDF('l', 'mm', 'a3'); // 420 x 297 mm
           const pageW = 420, pageH = 297, margin = 12;
@@ -1989,7 +2016,7 @@ function downloadA3() {
           pdf.save('ATNM-HSE-PAMS-Organogram-A3-' + Date.now() + '.pdf');
           focusId = savedFocus;
           render();
-        }).catch(() => restore());
+        }).catch(() => { restore(); document.body.classList.remove('screenshot-mode'); });
       });
     });
   });
