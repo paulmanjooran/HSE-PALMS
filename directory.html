@@ -100,25 +100,24 @@
   #breadcrumb { padding: 8px 24px; font-size: 12.5px; color: #8891a0; display: none; align-items: center; gap: 6px; }
 
   #treeLegend {
-    position: fixed; top: 130px; right: 20px; z-index: 200;
+    display: flex; align-items: center; flex-wrap: wrap; gap: 7px 24px; justify-content: center;
     background: rgba(255,255,255,0.55); backdrop-filter: blur(22px) saturate(1.6); -webkit-backdrop-filter: blur(22px) saturate(1.6);
-    border: 1px solid var(--glass-border); border-radius: 14px; padding: 14px 16px;
-    box-shadow: 0 10px 28px rgba(30,40,60,0.14); min-width: 168px;
+    border-bottom: 1px solid var(--glass-border); padding: 10px 24px; box-shadow: 0 4px 14px rgba(30,40,60,0.06);
   }
   #treeLegend.hide { display: none; }
   #treeLegend .legend-title {
     font-family: 'Manrope'; font-weight: 800; font-size: 11px; text-transform: uppercase;
-    letter-spacing: .04em; color: #8891a0; margin-bottom: 10px;
+    letter-spacing: .04em; color: #8891a0; margin-right: 4px;
   }
   #treeLegend .legend-row {
-    display: flex; align-items: center; gap: 9px; font-size: 12px; font-weight: 600; color: var(--dark);
-    padding: 5px 0;
+    display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--dark);
+    white-space: nowrap;
   }
-  #treeLegend .legend-swatch { width: 24px; height: 0; border-top-width: 2.5px; border-top-style: solid; flex-shrink: 0; }
+  #treeLegend .legend-swatch { width: 22px; height: 0; border-top-width: 2.5px; border-top-style: solid; flex-shrink: 0; }
   #treeLegend .legend-swatch.solid { border-top-color: var(--blue); }
   #treeLegend .legend-swatch.dotted { border-top-color: #8891a0; border-top-style: dashed; }
   #treeLegend .legend-swatch.partner { border-top-color: #00796b; border-top-style: dotted; border-top-width: 3px; }
-  #treeLegend .legend-icon { width: 24px; text-align: center; font-size: 13px; flex-shrink: 0; }
+  #treeLegend .legend-icon { width: 20px; text-align: center; font-size: 13px; flex-shrink: 0; }
   #breadcrumb.show { display: flex; }
   #breadcrumb a { color: var(--blue); cursor: pointer; font-weight: 600; text-decoration: none; }
 
@@ -517,6 +516,16 @@
 
 <div id="breadcrumb"><span>Focused on:</span> <a onclick="resetFocus()">All Teams</a> <span id="crumbTrail"></span></div>
 
+<div id="treeLegend">
+  <span class="legend-title">Legend</span>
+  <span class="legend-row"><span class="legend-swatch solid"></span> Direct reporting</span>
+  <span class="legend-row"><span class="legend-swatch dotted"></span> Indirect reporting (→ ODC)</span>
+  <span class="legend-row"><span class="legend-icon"><svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" stroke="#4d555b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="#4d555b" stroke-width="2"/></svg></span> View profile</span>
+  <span class="legend-row"><span class="legend-icon">🌳</span> View this person's team</span>
+  <span class="legend-row"><span class="legend-swatch partner"></span> Shift rotation partner</span>
+  <span class="legend-row"><span class="legend-icon">👥</span> Group - click to expand</span>
+</div>
+
 <div id="stage">
   <div id="loadingMsg">Loading workforce data...</div>
   <div id="emptyMsg">No personnel match the current filters.</div>
@@ -531,16 +540,6 @@
   <div id="matrixWrap"></div>
 
   <div id="summaryWrap"></div>
-</div>
-
-<div id="treeLegend">
-  <div class="legend-title">Legend</div>
-  <div class="legend-row"><span class="legend-swatch solid"></span> Direct reporting</div>
-  <div class="legend-row"><span class="legend-swatch dotted"></span> Indirect reporting (→ ODC)</div>
-  <div class="legend-row"><span class="legend-icon"><svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" stroke="#4d555b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="#4d555b" stroke-width="2"/></svg></span> View profile</div>
-  <div class="legend-row"><span class="legend-icon">🌳</span> View this person's team</div>
-  <div class="legend-row"><span class="legend-swatch partner"></span> Shift rotation partner</div>
-  <div class="legend-row"><span class="legend-icon">👥</span> Group - click to expand</div>
 </div>
 
 <div id="overlay" onclick="closePopup()"></div>
