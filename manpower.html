@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --dark: #4d555b; --blue: #21409a; --orange: #f58220; --green: #2e7d32; --red: #c62828; --glass: rgba(255,255,255,0.65); --glass-border: rgba(255,255,255,0.85); }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: 'Inter', sans-serif; color: var(--dark); padding: 24px 16px 60px;
+    background: radial-gradient(circle at 10% 8%, rgba(33,64,154,0.18), transparent 42%),
+                radial-gradient(circle at 90% 12%, rgba(245,130,32,0.16), transparent 45%),
+                linear-gradient(160deg, #f4f0fb 0%, #eef4fb 50%, #fdf1f0 100%);
+    background-attachment: fixed;
+  }
+  h1, .brand-font { font-family: 'Manrope', sans-serif; }
+  .card {
+    max-width: 1180px; margin: 0 auto 20px; background: var(--glass); backdrop-filter: blur(20px) saturate(1.5);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5); border: 1px solid var(--glass-border); border-radius: 18px;
+    padding: 22px 26px; box-shadow: 0 10px 30px rgba(30,40,60,0.10);
+  }
+  h1 { font-size: 19px; margin: 0 0 2px; text-align: center; }
+  .sub { text-align: center; font-size: 12px; color: #8891a0; margin-bottom: 4px; }
+  .note { background: rgba(245,130,32,0.1); border: 1px solid rgba(245,130,32,0.3); border-radius: 12px; padding: 10px 16px; font-size: 12px; color: #8a4a0a; margin-bottom: 14px; }
+  .toprow { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  label { display: block; font-size: 11px; font-weight: 700; color: #8891a0; text-transform: uppercase; letter-spacing: .03em; margin-bottom: 4px; }
+  input, select { padding: 8px 11px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); font-size: 13px; background: rgba(255,255,255,0.7); }
+  table { width: 100%; border-collapse: separate; border-spacing: 0 6px; font-size: 12.5px; margin-top: 16px; }
+  th { text-align: center; color: #8891a0; font-weight: 700; padding: 6px 8px; font-size: 10px; text-transform: uppercase; }
+  th.input-col { color: var(--blue); }
+  td { background: rgba(255,255,255,0.65); padding: 8px 8px; text-align: center; vertical-align: middle; }
+  td:first-child { border-radius: 8px 0 0 8px; text-align: left; font-family: 'Manrope'; font-weight: 800; }
+  td:last-child { border-radius: 0 8px 8px 0; }
+  input.cell-input { width: 68px; padding: 6px 4px; border-radius: 6px; border: 1px solid rgba(33,64,154,0.25); background: rgba(255,255,255,0.8); text-align: center; font-size: 12.5px; font-weight: 600; }
+  .computed { font-weight: 700; }
+  .compliance-pass { color: var(--green); font-weight: 800; }
+  .compliance-fail { color: var(--red); font-weight: 800; }
+  tr.total-row td { background: rgba(33,64,154,0.10); font-weight: 800; color: #16296b; }
+  .legacy-flag { font-size: 9px; color: var(--orange); display: block; font-weight: 700; margin-top: 1px; cursor: help; }
+  button { border: none; border-radius: 9px; padding: 10px 18px; font-family: 'Manrope'; font-weight: 700; font-size: 13px; cursor: pointer; }
+  #saveBtn { background: linear-gradient(135deg, var(--orange), #ff9d4d); color: #fff; margin-top: 18px; box-shadow: 0 4px 14px rgba(245,130,32,0.4); }
+  #saveBtn:disabled { background: #aaa; box-shadow: none; }
+  #status { max-width: 1180px; margin: 12px auto; font-size: 13px; padding: 10px 14px; border-radius: 9px; display: none; }
+  #status.ok { display: block; background: #e8f5e9; color: #2e7d32; }
+  #status.err { display: block; background: #fdecea; color: #c62828; }
+</style>
+<style>
+  #loginGate {
+    position: fixed; inset: 0; background: linear-gradient(135deg, #4d555b, #21409a); z-index: 9999;
+    display: flex; align-items: center; justify-content: center; font-family: 'Segoe UI', Arial, sans-serif;
+  }
+  #loginGate .box { background: #fff; border-radius: 16px; padding: 36px; max-width: 380px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+  #loginGate h2 { margin: 0 0 4px; color: #4d555b; font-size: 19px; }
+  #loginGate .sub { color: #8891a0; font-size: 12.5px; margin-bottom: 22px; }
+  #loginGate label { display: block; font-size: 11.5px; font-weight: 700; color: #8891a0; text-transform: uppercase; margin-top: 14px; margin-bottom: 4px; }
+  #loginGate input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+  #loginGate button.primary { width: 100%; margin-top: 20px; padding: 12px; background: #21409a; color: #fff; border: none;
+    border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  #loginGate button.primary:disabled { background: #aaa; cursor: not-allowed; }
+  #loginGate .forgot-link { text-align: center; margin-top: 14px; font-size: 12.5px; color: #21409a; cursor: pointer; text-decoration: underline; }
+  #loginGate #gateStatus { margin-top: 14px; font-size: 12.5px; padding: 9px 12px; border-radius: 7px; display: none; }
+  #loginGate #gateStatus.err { display: block; background: #fdecea; color: #c62828; }
+  #loginGate #gateStatus.ok { display: block; background: #e8f5e9; color: #2e7d32; }
+  #loginGate #forgotSection { display: none; }
+  #appContent { display: none; }
+</style>
+</head>
+<body>
+<div id="loginGate">
+  <div class="box">
+    <div id="loginSection">
+      <h2>HSE PALMS</h2>
+      <div class="sub">Sign in to continue</div>
+      <label>Username</label>
+      <input type="text" id="gateUsername" value="ATNM HSE" disabled style="background:#f2f4f6;color:#8891a0;">
+      <label>Password</label>
+      <input type="password" id="gatePassword">
+      <button class="primary" id="gateLoginBtn" onclick="attemptLogin()">Sign In</button>
+      <div class="forgot-link" onclick="showForgot()">Forgot password?</div>
+      <div id="gateStatus"></div>
+    </div>
+    <div id="forgotSection">
+      <h2>Forgot Password</h2>
+      <div class="sub">Enter your @altasnim.com email - the password will be sent to you.</div>
+      <label>Email</label>
+      <input type="email" id="forgotEmail" placeholder="yourname@altasnim.com">
+      <button class="primary" id="forgotBtn" onclick="attemptForgot()">Send Password</button>
+      <div class="forgot-link" onclick="showLogin()">Back to sign in</div>
+      <div id="gateStatus2"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  function setGateStatus(id, msg, cls) {
+    const el = document.getElementById(id);
+    el.className = cls; el.textContent = msg;
+  }
+  window.showForgot = function() {
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('forgotSection').style.display = 'block';
+  };
+  window.showLogin = function() {
+    document.getElementById('forgotSection').style.display = 'none';
+    document.getElementById('loginSection').style.display = 'block';
+  };
+  window.attemptLogin = function() {
+    const username = document.getElementById('gateUsername').value.trim();
+    const password = document.getElementById('gatePassword').value;
+    const btn = document.getElementById('gateLoginBtn');
+    btn.disabled = true; btn.textContent = 'Checking...';
+    fetch(BASE_URL + '?action=checkLogin&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password))
+      .then(function(res) { return res.json(); })
+      .then(function(result) {
+        btn.disabled = false; btn.textContent = 'Sign In';
+        if (!result.success) { setGateStatus('gateStatus', result.error, 'err'); return; }
+        sessionStorage.setItem('hsePalmsAuth', 'true');
+        document.getElementById('loginGate').style.display = 'none';
+        document.getElementById('appContent').style.display = 'block';
+        if (typeof onGateUnlocked === 'function') onGateUnlocked();
+      })
+      .catch(function(err) {
+        btn.disabled = false; btn.textContent = 'Sign In';
+        setGateStatus('gateStatus', 'Login failed: ' + err.message, 'err');
+      });
+  };
+  window.attemptForgot = function() {
+    const email = document.getElementById('forgotEmail').value.trim();
+    const btn = document.getElementById('forgotBtn');
+    btn.disabled = true; btn.textContent = 'Sending...';
+    fetch(BASE_URL + '?action=forgotPassword&email=' + encodeURIComponent(email))
+      .then(function(res) { return res.json(); })
+      .then(function(result) {
+        btn.disabled = false; btn.textContent = 'Send Password';
+        setGateStatus('gateStatus2', result.success ? result.message : result.error, result.success ? 'ok' : 'err');
+      })
+      .catch(function(err) {
+        btn.disabled = false; btn.textContent = 'Send Password';
+        setGateStatus('gateStatus2', 'Failed: ' + err.message, 'err');
+      });
+  };
+  document.addEventListener('DOMContentLoaded', function() {
+    if (sessionStorage.getItem('hsePalmsAuth') === 'true') {
+      document.getElementById('loginGate').style.display = 'none';
+      document.getElementById('appContent').style.display = 'block';
+      if (typeof onGateUnlocked === 'function') onGateUnlocked();
+    }
+  });
+})();
+</script>
+<div id="appContent">
+<div class="card">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+    <h1>HSE : Manpower Ratio &mdash; Monthly Entry</h1>
+    <button type="button" onclick="location.reload()" style="border:none;background:#f2f4f6;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;color:#4d555b;">&#8635; Refresh</button>
+  </div>
+  <div class="sub">ATNM PDO-ODC Contract &mdash; 1:50 and 1:100 HSE:Manpower compliance</div>
+  <div class="note">
+    Entry is restricted to Admin and users on the permitted list set in Admin Control.
+    Your Employee ID is checked on submit - if you're not permitted, the save will be rejected.
+  </div>
+  <div class="toprow">
+    <div><label>Your Employee ID *</label><input type="text" id="enteredById" placeholder="e.g. 118022" required></div>
+    <div><label>Month *</label><input type="month" id="monthPicker" required></div>
+    <div><button id="loadBtn" onclick="loadMonth()" style="background:rgba(33,64,154,0.1);color:var(--blue);">Load / Refresh Month</button></div>
+  </div>
+</div>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th rowspan="2">Cluster</th>
+        <th class="input-col" rowspan="2">Manpower</th>
+        <th rowspan="2">Req. 1:50</th>
+        <th rowspan="2">Req. 1:100<span class="legacy-flag" title="Formula = Manpower/100 + 0.5, carried over from the historical sheet. Unconfirmed against the actual contract clause.">&#9888; legacy +0.5</span></th>
+        <th class="input-col" rowspan="2">Omani HSEA</th>
+        <th class="input-col" rowspan="2">Road Safety Adv/Mgr</th>
+        <th rowspan="2">Total Omani+RS</th>
+        <th rowspan="2">National/Shift</th>
+        <th class="input-col" rowspan="2">Expat HSEA</th>
+        <th rowspan="2">Onsite Positions/Shift</th>
+        <th rowspan="2">1:50 Compliance</th>
+        <th rowspan="2">1:100 Compliance</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+    <tfoot><tr class="total-row" id="totalRow"></tr></tfoot>
+  </table>
+  <button id="saveBtn" onclick="submitMonth()">Save Month</button>
+</div>
+<div id="status"></div>
+</div>
+
+<script>
+  const BASE_URL = "https://script.google.com/macros/s/AKfycbxY_ju_CjS-6vBox8XZ7dJe9KtHXpBcSEBSABxmrS1IGAfcd5O10qwJTEN3JfskehJX/exec";
+  const CLUSTERS = ["Marmul WD", "Marmul Projects", "Amal", "Nimr", "GB"];
+
+  function setStatus(msg, cls) { const el = document.getElementById('status'); el.className = cls; el.textContent = msg; }
+
+  function buildRows(prefill) {
+    prefill = prefill || {};
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = CLUSTERS.map(c => {
+      const p = prefill[c] || {};
+      return `
+        <tr data-cluster="${c}">
+          <td>${c}</td>
+          <td><input type="number" class="cell-input in-manpower" min="0" value="${p.Manpower || 0}" oninput="recalc()"></td>
+          <td class="computed out-req50">0</td>
+          <td class="computed out-req100">0</td>
+          <td><input type="number" class="cell-input in-omani" min="0" value="${p.OmaniHSEA || 0}" oninput="recalc()"></td>
+          <td><input type="number" class="cell-input in-roadsafety" min="0" value="${p.RoadSafetyAdvisors || 0}" oninput="recalc()"></td>
+          <td class="computed out-totalomani">0</td>
+          <td class="computed out-natshift">0</td>
+          <td><input type="number" class="cell-input in-expat" min="0" value="${p.ExpatHSEA || 0}" oninput="recalc()"></td>
+          <td class="computed out-onsite">0</td>
+          <td class="computed out-comp50">0</td>
+          <td class="computed out-comp100">0</td>
+        </tr>
+      `;
+    }).join('');
+    recalc();
+  }
+
+  function recalc() {
+    const rows = document.querySelectorAll('#tableBody tr');
+    let t = { manpower: 0, req50: 0, req100: 0, omani: 0, roadsafety: 0, totalomani: 0, natshift: 0, expat: 0, onsite: 0, comp50: 0, comp100: 0 };
+    rows.forEach(row => {
+      const manpower = Number(row.querySelector('.in-manpower').value) || 0;
+      const omani = Number(row.querySelector('.in-omani').value) || 0;
+      const roadsafety = Number(row.querySelector('.in-roadsafety').value) || 0;
+      const expat = Number(row.querySelector('.in-expat').value) || 0;
+      const req50 = manpower / 50, req100 = manpower / 100 + 0.5;
+      const totalOmani = omani + roadsafety, natShift = Math.floor(omani / 2), onsite = natShift + expat;
+      const comp50 = onsite - req50, comp100 = onsite - req100;
+
+      row.querySelector('.out-req50').textContent = req50.toFixed(2);
+      row.querySelector('.out-req100').textContent = req100.toFixed(2);
+      row.querySelector('.out-totalomani').textContent = totalOmani;
+      row.querySelector('.out-natshift').textContent = natShift;
+      row.querySelector('.out-onsite').textContent = onsite;
+      const c50 = row.querySelector('.out-comp50'); c50.textContent = comp50.toFixed(2); c50.className = 'computed ' + (comp50 >= 0 ? 'compliance-pass' : 'compliance-fail');
+      const c100 = row.querySelector('.out-comp100'); c100.textContent = comp100.toFixed(2); c100.className = 'computed ' + (comp100 >= 0 ? 'compliance-pass' : 'compliance-fail');
+
+      t.manpower += manpower; t.req50 += req50; t.req100 += req100; t.omani += omani; t.roadsafety += roadsafety;
+      t.totalomani += totalOmani; t.natshift += natShift; t.expat += expat; t.onsite += onsite; t.comp50 += comp50; t.comp100 += comp100;
+    });
+    document.getElementById('totalRow').innerHTML = `
+      <td>TOTAL</td><td>${t.manpower}</td><td>${t.req50.toFixed(2)}</td><td>${t.req100.toFixed(2)}</td>
+      <td>${t.omani}</td><td>${t.roadsafety}</td><td>${t.totalomani}</td><td>${t.natshift}</td><td>${t.expat}</td><td>${t.onsite}</td>
+      <td class="${t.comp50 >= 0 ? 'compliance-pass' : 'compliance-fail'}">${t.comp50.toFixed(2)}</td>
+      <td class="${t.comp100 >= 0 ? 'compliance-pass' : 'compliance-fail'}">${t.comp100.toFixed(2)}</td>`;
+  }
+
+  function loadMonth() {
+    const month = document.getElementById('monthPicker').value;
+    if (!month) { setStatus('Pick a month first.', 'err'); return; }
+    fetch(BASE_URL + '?action=manpowerForMonth&month=' + encodeURIComponent(month))
+      .then(r => r.json())
+      .then(rows => {
+        const prefill = {};
+        (rows || []).forEach(r => prefill[r.Cluster] = r);
+        buildRows(prefill);
+        setStatus(rows.length ? 'Loaded existing data for ' + month + '.' : 'No data yet for ' + month + ' - starting blank.', 'ok');
+      })
+      .catch(err => setStatus('Could not load: ' + err.message, 'err'));
+  }
+
+  function submitMonth() {
+    const enteredById = document.getElementById('enteredById').value.trim();
+    const month = document.getElementById('monthPicker').value;
+    if (!enteredById) { setStatus('Enter your Employee ID.', 'err'); return; }
+    if (!month) { setStatus('Pick a month.', 'err'); return; }
+
+    const entries = Array.from(document.querySelectorAll('#tableBody tr')).map(row => ({
+      cluster: row.dataset.cluster,
+      manpower: row.querySelector('.in-manpower').value,
+      omaniHSEA: row.querySelector('.in-omani').value,
+      roadSafety: row.querySelector('.in-roadsafety').value,
+      expatHSEA: row.querySelector('.in-expat').value
+    }));
+
+    const btn = document.getElementById('saveBtn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+
+    fetch(BASE_URL, { method: 'POST', body: JSON.stringify({
+      action: 'submitManpower', payload: { month: month, enteredById: enteredById, entries: entries }
+    })})
+      .then(r => r.json())
+      .then(result => {
+        btn.disabled = false; btn.textContent = 'Save Month';
+        if (!result.success) { setStatus('Error: ' + result.error, 'err'); return; }
+        setStatus('Saved ' + result.month + '. This now feeds the Cluster Summary compliance table in HSE Team Directory.', 'ok');
+      })
+      .catch(err => { btn.disabled = false; btn.textContent = 'Save Month'; setStatus('Failed: ' + err.message, 'err'); });
+  }
+
+  function onGateUnlocked() {
+    const now = new Date();
+    document.getElementById('monthPicker').value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    buildRows();
+    loadMonth();
+  }
+</script>
+</body>
+</html>
