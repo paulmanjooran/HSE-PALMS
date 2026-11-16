@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --dark: #4d555b; --blue: #21409a; --orange: #f58220; --glass: rgba(255,255,255,0.65); --glass-border: rgba(255,255,255,0.85); }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: 'Inter', sans-serif; color: var(--dark); padding: 24px 16px 60px;
+    background: radial-gradient(circle at 10% 8%, rgba(33,64,154,0.18), transparent 42%),
+                radial-gradient(circle at 90% 12%, rgba(245,130,32,0.16), transparent 45%),
+                linear-gradient(160deg, #f4f0fb 0%, #eef4fb 50%, #fdf1f0 100%);
+    background-attachment: fixed;
+  }
+  h1, .brand-font { font-family: 'Manrope', sans-serif; }
+  .card {
+    max-width: 1100px; margin: 0 auto 20px; background: var(--glass); backdrop-filter: blur(20px) saturate(1.5);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5); border: 1px solid var(--glass-border); border-radius: 18px;
+    padding: 22px 26px; box-shadow: 0 10px 30px rgba(30,40,60,0.10);
+  }
+  h1 { font-size: 19px; margin: 0 0 2px; text-align: center; }
+  .sub { text-align: center; font-size: 12px; color: #8891a0; margin-bottom: 4px; }
+  h2 { font-family: 'Manrope'; font-size: 14px; margin: 0 0 14px; color: var(--blue); }
+  .grid4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; }
+  label { display: block; font-size: 11px; font-weight: 700; color: #8891a0; text-transform: uppercase; letter-spacing: .03em; margin: 10px 0 4px; }
+  input, select, textarea {
+    width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); font-size: 13px;
+    background: rgba(255,255,255,0.7); font-family: 'Inter'; box-sizing: border-box;
+  }
+  textarea { resize: vertical; min-height: 44px; }
+  button { border: none; border-radius: 9px; padding: 9px 16px; font-family: 'Manrope'; font-weight: 700; font-size: 12.5px; cursor: pointer; }
+  .btn-primary { background: linear-gradient(135deg, var(--orange), #ff9d4d); color: #fff; margin-top: 16px; }
+  .btn-ghost { background: rgba(255,255,255,0.7); color: var(--dark); }
+  #status { max-width: 1100px; margin: 12px auto; font-size: 13px; padding: 10px 14px; border-radius: 9px; display: none; }
+  #status.ok { display: block; background: #e8f5e9; color: #2e7d32; }
+  #status.err { display: block; background: #fdecea; color: #c62828; }
+  .filter-bar { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .filter-bar select { width: auto; min-width: 140px; }
+  table { width: 100%; border-collapse: separate; border-spacing: 0 6px; font-size: 12.5px; }
+  th { text-align: left; color: #8891a0; font-weight: 700; padding: 4px 10px; font-size: 10.5px; text-transform: uppercase; }
+  td { background: rgba(255,255,255,0.6); padding: 9px 10px; vertical-align: middle; }
+  td:first-child { border-radius: 8px 0 0 8px; }
+  td:last-child { border-radius: 0 8px 8px 0; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 10.5px; font-weight: 700; color: #fff; }
+  .badge.notstarted { background: #8891a0; }
+  .badge.inprogress { background: var(--blue); }
+  .badge.overdue { background: #c62828; }
+  .badge.completed { background: #2e7d32; }
+  .source-tag { font-size: 10px; padding: 2px 8px; border-radius: 8px; background: rgba(33,64,154,0.1); color: var(--blue); font-weight: 700; }
+</style>
+<style>
+  #loginGate {
+    position: fixed; inset: 0; background: linear-gradient(135deg, #4d555b, #21409a); z-index: 9999;
+    display: flex; align-items: center; justify-content: center; font-family: 'Segoe UI', Arial, sans-serif;
+  }
+  #loginGate .box { background: #fff; border-radius: 16px; padding: 36px; max-width: 380px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+  #loginGate h2 { margin: 0 0 4px; color: #4d555b; font-size: 19px; }
+  #loginGate .sub { color: #8891a0; font-size: 12.5px; margin-bottom: 22px; }
+  #loginGate label { display: block; font-size: 11.5px; font-weight: 700; color: #8891a0; text-transform: uppercase; margin-top: 14px; margin-bottom: 4px; }
+  #loginGate input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+  #loginGate button.primary { width: 100%; margin-top: 20px; padding: 12px; background: #21409a; color: #fff; border: none;
+    border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  #loginGate button.primary:disabled { background: #aaa; cursor: not-allowed; }
+  #loginGate .forgot-link { text-align: center; margin-top: 14px; font-size: 12.5px; color: #21409a; cursor: pointer; text-decoration: underline; }
+  #loginGate #gateStatus { margin-top: 14px; font-size: 12.5px; padding: 9px 12px; border-radius: 7px; display: none; }
+  #loginGate #gateStatus.err { display: block; background: #fdecea; color: #c62828; }
+  #loginGate #gateStatus.ok { display: block; background: #e8f5e9; color: #2e7d32; }
+  #loginGate #forgotSection { display: none; }
+  #appContent { display: none; }
+</style>
+</head>
+<body>
+<div id="loginGate">
+  <div class="box">
+    <div id="loginSection">
+      <h2>HSE PALMS</h2>
+      <div class="sub">Sign in to continue</div>
+      <label>Username</label>
+      <input type="text" id="gateUsername" value="ATNM HSE" disabled style="background:#f2f4f6;color:#8891a0;">
+      <label>Password</label>
+      <input type="password" id="gatePassword">
+      <button class="primary" id="gateLoginBtn" onclick="attemptLogin()">Sign In</button>
+      <div class="forgot-link" onclick="showForgot()">Forgot password?</div>
+      <div id="gateStatus"></div>
+    </div>
+    <div id="forgotSection">
+      <h2>Forgot Password</h2>
+      <div class="sub">Enter your @altasnim.com email - the password will be sent to you.</div>
+      <label>Email</label>
+      <input type="email" id="forgotEmail" placeholder="yourname@altasnim.com">
+      <button class="primary" id="forgotBtn" onclick="attemptForgot()">Send Password</button>
+      <div class="forgot-link" onclick="showLogin()">Back to sign in</div>
+      <div id="gateStatus2"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  function setGateStatus(id, msg, cls) {
+    const el = document.getElementById(id);
+    el.className = cls; el.textContent = msg;
+  }
+  window.showForgot = function() {
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('forgotSection').style.display = 'block';
+  };
+  window.showLogin = function() {
+    document.getElementById('forgotSection').style.display = 'none';
+    document.getElementById('loginSection').style.display = 'block';
+  };
+  window.attemptLogin = function() {
+    const username = document.getElementById('gateUsername').value.trim();
+    const password = document.getElementById('gatePassword').value;
+    const btn = document.getElementById('gateLoginBtn');
+    btn.disabled = true; btn.textContent = 'Checking...';
+    fetch(BASE_URL + '?action=checkLogin&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password))
+      .then(function(res) { return res.json(); })
+      .then(function(result) {
+        btn.disabled = false; btn.textContent = 'Sign In';
+        if (!result.success) { setGateStatus('gateStatus', result.error, 'err'); return; }
+        sessionStorage.setItem('hsePalmsAuth', 'true');
+        document.getElementById('loginGate').style.display = 'none';
+        document.getElementById('appContent').style.display = 'block';
+        if (typeof onGateUnlocked === 'function') onGateUnlocked();
+      })
+      .catch(function(err) {
+        btn.disabled = false; btn.textContent = 'Sign In';
+        setGateStatus('gateStatus', 'Login failed: ' + err.message, 'err');
+      });
+  };
+  window.attemptForgot = function() {
+    const email = document.getElementById('forgotEmail').value.trim();
+    const btn = document.getElementById('forgotBtn');
+    btn.disabled = true; btn.textContent = 'Sending...';
+    fetch(BASE_URL + '?action=forgotPassword&email=' + encodeURIComponent(email))
+      .then(function(res) { return res.json(); })
+      .then(function(result) {
+        btn.disabled = false; btn.textContent = 'Send Password';
+        setGateStatus('gateStatus2', result.success ? result.message : result.error, result.success ? 'ok' : 'err');
+      })
+      .catch(function(err) {
+        btn.disabled = false; btn.textContent = 'Send Password';
+        setGateStatus('gateStatus2', 'Failed: ' + err.message, 'err');
+      });
+  };
+  document.addEventListener('DOMContentLoaded', function() {
+    if (sessionStorage.getItem('hsePalmsAuth') === 'true') {
+      document.getElementById('loginGate').style.display = 'none';
+      document.getElementById('appContent').style.display = 'block';
+      if (typeof onGateUnlocked === 'function') onGateUnlocked();
+    }
+  });
+})();
+</script>
+<div id="appContent">
+<div class="card">
+  <h1>Action Tracking Register (ATR)</h1>
+  <div class="sub">Manual entries plus items pulled from LFI CORE and STAC findings</div>
+</div>
+
+<div class="card">
+  <h2>New ATR Item</h2>
+  <div class="grid4">
+    <div><label>Owner (Employee ID) *</label><select id="ownerId" required></select></div>
+    <div><label>Category</label><input type="text" id="category" placeholder="e.g. Inspection Follow-up"></div>
+    <div><label>Date Raised</label><input type="date" id="dateRaised"></div>
+    <div><label>Due Date *</label><input type="date" id="dueDate" required></div>
+  </div>
+  <label>Description *</label>
+  <textarea id="description" placeholder="What needs to be done"></textarea>
+  <button class="btn-primary" id="submitBtn" onclick="submitATR()">Add ATR Item</button>
+</div>
+<div id="status"></div>
+
+<div class="card">
+  <h2>Open &amp; Recent Items</h2>
+  <div class="filter-bar">
+    <select id="statusFilter" onchange="renderTable()">
+      <option value="">All statuses</option>
+      <option>Not Started</option><option>In Progress</option><option>Overdue</option><option>Completed</option>
+    </select>
+    <select id="sourceFilter" onchange="renderTable()">
+      <option value="">All sources</option>
+      <option>Manual</option><option>LFI CORE</option><option>STAC</option><option>Handover</option>
+    </select>
+    <button class="btn-ghost" onclick="loadATR()">&#8635; Refresh</button>
+  </div>
+  <table>
+    <thead><tr><th>Description</th><th>Owner</th><th>Source</th><th>Due</th><th>Status</th><th></th></tr></thead>
+    <tbody id="atrBody"></tbody>
+  </table>
+</div>
+</div>
+
+<script>
+  const BASE_URL = "https://script.google.com/macros/s/AKfycbxY_ju_CjS-6vBox8XZ7dJe9KtHXpBcSEBSABxmrS1IGAfcd5O10qwJTEN3JfskehJX/exec";
+  let ATR_ITEMS = [];
+
+  function setStatus(msg, cls) { const el = document.getElementById('status'); el.className = cls; el.textContent = msg; }
+
+  function loadEmployees() {
+    fetch(BASE_URL + '?action=api').then(r => r.json()).then(data => {
+      document.getElementById('ownerId').innerHTML = '<option value="">Select Employee ID</option>' +
+        (data.personnel || []).map(p => '<option value="' + p.employeeId + '">' + p.employeeId + ' - ' + p.name + '</option>').join('');
+    });
+  }
+
+  function loadATR() {
+    fetch(BASE_URL + '?action=atrList').then(r => r.json()).then(data => {
+      ATR_ITEMS = data || [];
+      renderTable();
+    }).catch(err => setStatus('Could not load ATR items: ' + err.message, 'err'));
+  }
+
+  function renderTable() {
+    const statusF = document.getElementById('statusFilter').value;
+    const sourceF = document.getElementById('sourceFilter').value;
+    const filtered = ATR_ITEMS.filter(r => (!statusF || r.Status === statusF) && (!sourceF || r.Source === sourceF));
+    document.getElementById('atrBody').innerHTML = filtered.map(r => `
+      <tr>
+        <td>${r.Description || ''}</td>
+        <td>${r.OwnerName || r.OwnerID || ''}</td>
+        <td><span class="source-tag">${r.Source || 'Manual'}</span></td>
+        <td>${r.DueDate || ''}</td>
+        <td><span class="badge ${(r.Status || 'notstarted').replace(/\s/g,'').toLowerCase()}">${r.Status || 'Not Started'}</span></td>
+        <td>
+          <select onchange="updateStatus('${r.ATRID}', this.value)" style="width:auto;">
+            <option ${r.Status==='Not Started'?'selected':''}>Not Started</option>
+            <option ${r.Status==='In Progress'?'selected':''}>In Progress</option>
+            <option ${r.Status==='Overdue'?'selected':''}>Overdue</option>
+            <option ${r.Status==='Completed'?'selected':''}>Completed</option>
+          </select>
+        </td>
+      </tr>
+    `).join('') || '<tr><td colspan="6" style="text-align:center;color:#8891a0;">No ATR items match the current filters.</td></tr>';
+  }
+
+  function updateStatus(atrId, status) {
+    fetch(BASE_URL, { method: 'POST', body: JSON.stringify({ action: 'updateATRStatus', payload: { atrId: atrId, status: status } }) })
+      .then(r => r.json())
+      .then(result => { if (result.success) loadATR(); else setStatus('Update failed: ' + result.error, 'err'); });
+  }
+
+  function submitATR() {
+    const ownerId = document.getElementById('ownerId').value;
+    const description = document.getElementById('description').value.trim();
+    const dueDate = document.getElementById('dueDate').value;
+    if (!ownerId || !description || !dueDate) { setStatus('Owner, description, and due date are required.', 'err'); return; }
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true; btn.textContent = 'Adding...';
+
+    fetch(BASE_URL, { method: 'POST', body: JSON.stringify({
+      action: 'submitATR', payload: {
+        source: 'Manual', ownerId: ownerId, category: document.getElementById('category').value,
+        dateRaised: document.getElementById('dateRaised').value, dueDate: dueDate,
+        description: description, status: 'Not Started'
+      }
+    })})
+      .then(r => r.json())
+      .then(result => {
+        btn.disabled = false; btn.textContent = 'Add ATR Item';
+        if (!result.success) { setStatus('Error: ' + result.error, 'err'); return; }
+        setStatus('ATR item added (' + result.atrId + ').', 'ok');
+        document.getElementById('description').value = '';
+        loadATR();
+      })
+      .catch(err => { btn.disabled = false; btn.textContent = 'Add ATR Item'; setStatus('Failed: ' + err.message, 'err'); });
+  }
+
+  function onGateUnlocked() {
+    loadEmployees();
+    loadATR();
+  }
+</script>
+</body>
+</html>
