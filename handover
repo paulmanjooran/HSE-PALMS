@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --dark: #4d555b; --blue: #21409a; --orange: #f58220; --glass: rgba(255,255,255,0.65); --glass-border: rgba(255,255,255,0.85); }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: 'Inter', sans-serif; color: var(--dark); padding: 24px 16px 60px;
+    background: radial-gradient(circle at 10% 8%, rgba(33,64,154,0.18), transparent 42%),
+                radial-gradient(circle at 90% 12%, rgba(245,130,32,0.16), transparent 45%),
+                linear-gradient(160deg, #f4f0fb 0%, #eef4fb 50%, #fdf1f0 100%);
+    background-attachment: fixed;
+  }
+  h1, .brand-font { font-family: 'Manrope', sans-serif; }
+  .card {
+    max-width: 900px; margin: 0 auto 20px; background: var(--glass); backdrop-filter: blur(20px) saturate(1.5);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5); border: 1px solid var(--glass-border); border-radius: 18px;
+    padding: 24px 28px; box-shadow: 0 10px 30px rgba(30,40,60,0.10);
+  }
+  h1 { font-size: 19px; margin: 0 0 2px; text-align: center; }
+  .sub { text-align: center; font-size: 12px; color: #8891a0; margin-bottom: 8px; }
+  h2 { font-family: 'Manrope'; font-size: 14px; margin: 0 0 14px; color: var(--blue); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  label { display: block; font-size: 11.5px; font-weight: 700; color: #8891a0; text-transform: uppercase; letter-spacing: .03em; margin: 12px 0 4px; }
+  input, select, textarea {
+    width: 100%; padding: 9px 11px; border-radius: 9px; border: 1px solid rgba(0,0,0,0.1); font-size: 13.5px;
+    background: rgba(255,255,255,0.7); font-family: 'Inter'; box-sizing: border-box;
+  }
+  textarea { resize: vertical; min-height: 50px; }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; margin: 10px 0; font-size: 13px; }
+  .checkbox-row input { width: auto; }
+  table.tasks { width: 100%; border-collapse: separate; border-spacing: 0 6px; margin-top: 10px; font-size: 12px; }
+  table.tasks th { text-align: left; color: #8891a0; font-weight: 700; padding: 4px 8px; font-size: 10.5px; text-transform: uppercase; }
+  table.tasks td { background: rgba(255,255,255,0.55); padding: 6px 8px; vertical-align: top; }
+  table.tasks td:first-child { border-radius: 8px 0 0 8px; }
+  table.tasks td:last-child { border-radius: 0 8px 8px 0; }
+  table.tasks input, table.tasks select { padding: 5px 7px; font-size: 11.5px; }
+  .btn-row { display: flex; gap: 10px; margin-top: 8px; }
+  button { border: none; border-radius: 9px; padding: 8px 14px; font-family: 'Manrope'; font-weight: 700; font-size: 12px; cursor: pointer; }
+  .btn-add { background: rgba(33,64,154,0.1); color: var(--blue); }
+  .btn-remove { background: rgba(198,40,40,0.1); color: #c62828; padding: 6px 10px; }
+  .approver-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .approver-chip {
+    display: inline-flex; align-items: center; gap: 6px; background: rgba(33,64,154,0.1); color: var(--blue);
+    padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  }
+  .approver-chip button { background: none; padding: 0; color: var(--blue); font-size: 14px; line-height: 1; }
+  #submitBtn { width: 100%; margin-top: 22px; padding: 13px; background: linear-gradient(135deg, var(--orange), #ff9d4d); color: #fff; font-size: 14px; box-shadow: 0 4px 14px rgba(245,130,32,0.4); }
+  #submitBtn:disabled { background: #aaa; box-shadow: none; }
+  #status { max-width: 900px; margin: 14px auto; font-size: 13px; padding: 12px 16px; border-radius: 10px; display: none; }
+  #status.ok { display: block; background: #e8f5e9; color: #2e7d32; }
+  #status.err { display: block; background: #fdecea; color: #c62828; }
+</style>
+<style>
+  #loginGate {
+    position: fixed; inset: 0; background: linear-gradient(135deg, #4d555b, #21409a); z-index: 9999;
+    display: flex; align-items: center; justify-content: center; font-family: 'Segoe UI', Arial, sans-serif;
+  }
+  #loginGate .box { background: #fff; border-radius: 16px; padding: 36px; max-width: 380px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+  #loginGate h2 { margin: 0 0 4px; color: #4d555b; font-size: 19px; }
+  #loginGate .sub { color: #8891a0; font-size: 12.5px; margin-bottom: 22px; }
+  #loginGate label { display: block; font-size: 11.5px; font-weight: 700; color: #8891a0; text-transform: uppercase; margin-top: 14px; margin-bottom: 4px; }
+  #loginGate input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+  #loginGate button.primary { width: 100%; margin-top: 20px; padding: 12px; background: #21409a; color: #fff; border: none;
+    border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  #loginGate button.primary:disabled { background: #aaa; cursor: not-allowed; }
+  #loginGate .forgot-link { text-align: center; margin-top: 14px; font-size: 12.5px; color: #21409a; cursor: pointer; text-decoration: underline; }
+  #loginGate #gateStatus { margin-top: 14px; font-size: 12.5px; padding: 9px 12px; border-radius: 7px; display: none; }
+  #loginGate #gateStatus.err { display: block; background: #fdecea; color: #c62828; }
+  #loginGate #gateStatus.ok { display: block; background: #e8f5e9; color: #2e7d32; }
+  #loginGate #forgotSection { display: none; }
+  #appContent { display: none; }
+</style>
+</head>
+<body>
+<div id="loginGate">
+  <div class="box">
+    <div id="loginSection">
+      <h2>HSE PALMS</h2>
+      <div class="sub">Sign in to continue</div>
+      <label>Username</label>
+      <input type="text" id="gateUsername" value="ATNM HSE" disabled style="background:#f2f4f6;color:#8891a0;">
+      <label>Password</label>
+      <input type="password" id="gatePassword">
+      <button class="primary" id="gateLoginBtn" onclick="attemptLogin()">Sign In</button>
+      <div class="forgot-link" onclick="showForgot()">Forgot password?</div>
+      <div id="gateStatus"></div>
+    </div>
+    <div id="forgotSection">
+      <h2>Forgot Password</h2>
+      <div class="sub">Enter your @altasnim.com email - the password will be sent to you.</div>
+      <label>Email</label>
+      <input type="email" id="forgotEmail" placeholder="yourname@altasnim.com">
+      <button class="primary" id="forgotBtn" onclick="attemptForgot()">Send Password</button>
+      <div class="forgot-link" onclick="showLogin()">Back to sign in</div>
+      <div id="gateStatus2"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  function setGateStatus(id, msg, cls) {
+    const el = document.getElementById(id);
+    el.className = cls; el.textContent = msg;
+  }
+  window.showForgot = function() {
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('forgotSection').style.display = 'block';
+  };
+  window.showLogin = function() {
+    document.getElementById('forgotSection').style.display = 'none';
+    document.getElementById('loginSection').style.display = 'block';
+  };
+  window.attemptLogin = function() {
+    const username = document.getElementById('gateUsername').value.trim();
+    const password = document.getElementById('gatePassword').value;
+    const btn = document.getElementById('gateLoginBtn');
+    btn.disabled = true; btn.textContent = 'Checking...';
+    fetch(BASE_URL + '?action=checkLogin&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password))
+      .then(function(res) { return res.json(); })
+      .then(function(result) {
+        btn.disabled = false; btn.textContent = 'Sign In';
+        if (!result.success) { setGateStatus('gateStatus', result.error, 'err'); return; }
+        sessionStorage.setItem('hsePalmsAuth', 'true');
+        document.getElementById('loginGate').style.display = 'none';
+        document.getElementById('appContent').style.display = 'block';
+        if (typeof onGateUnlocked === 'function') onGateUnlocked();
+      })
+      .catch(function(err) {
+        btn.disabled = false; btn.textContent = 'Sign In';
+        setGateStatus('gateStatus', 'Login failed: ' + err.message, 'err');
+      });
+  };
+  window.attemptForgot = function() {
+    const email = document.getElementById('forgotEmail').value.trim();
+    const btn = document.getElementById('forgotBtn');
+    btn.disabled = true; btn.textContent = 'Sending...';
+    fetch(BASE_URL + '?action=forgotPassword&email=' + encodeURIComponent(email))
+      .then(function(res) { return res.json(); })
+      .then(function(result) {
+        btn.disabled = false; btn.textContent = 'Send Password';
+        setGateStatus('gateStatus2', result.success ? result.message : result.error, result.success ? 'ok' : 'err');
+      })
+      .catch(function(err) {
+        btn.disabled = false; btn.textContent = 'Send Password';
+        setGateStatus('gateStatus2', 'Failed: ' + err.message, 'err');
+      });
+  };
+  document.addEventListener('DOMContentLoaded', function() {
+    if (sessionStorage.getItem('hsePalmsAuth') === 'true') {
+      document.getElementById('loginGate').style.display = 'none';
+      document.getElementById('appContent').style.display = 'block';
+      if (typeof onGateUnlocked === 'function') onGateUnlocked();
+    }
+  });
+})();
+</script>
+<div id="appContent">
+<div class="card">
+  <h1>HSE Staff - Job Handover Form</h1>
+  <div class="sub">Complete before rotation, leave, travel, or resignation. All fields marked * are required.</div>
+</div>
+
+<div class="card">
+  <h2>Handed Over By</h2>
+  <div class="grid2">
+    <div><label>Employee ID *</label><select id="hoId" required></select></div>
+    <div><label>Contact #</label><input type="text" id="hoContact"></div>
+  </div>
+  <h2 style="margin-top:20px;">Taken Over By (Reliever)</h2>
+  <div class="grid2">
+    <div><label>Employee ID *</label><select id="toId" required></select></div>
+    <div><label>Contact #</label><input type="text" id="toContact"></div>
+  </div>
+  <div class="checkbox-row"><input type="checkbox" id="priorExp"><label style="margin:0;text-transform:none;font-weight:600;">Reliever has prior experience in this role</label></div>
+</div>
+
+<div class="card">
+  <h2>Handover Details</h2>
+  <div class="grid3">
+    <div><label>Reason for Handover *</label><select id="reason" required>
+      <option>Rotation</option><option>Earned leave</option><option>Sick leave</option>
+      <option>Emergency leave</option><option>Official travel</option><option>Resignation</option>
+    </select></div>
+    <div><label>Period From *</label><input type="date" id="periodFrom" required></div>
+    <div><label>Period To *</label><input type="date" id="periodTo" required></div>
+  </div>
+  <h2 style="margin-top:20px;">Familiarization Checklist</h2>
+  <div class="checkbox-row"><input type="checkbox" id="famUsername"><label style="margin:0;text-transform:none;font-weight:600;">Username</label></div>
+  <div class="checkbox-row"><input type="checkbox" id="famPassword"><label style="margin:0;text-transform:none;font-weight:600;">Password</label></div>
+  <div class="checkbox-row"><input type="checkbox" id="famFolders"><label style="margin:0;text-transform:none;font-weight:600;">Familiarization to shared folders</label></div>
+  <div class="checkbox-row"><input type="checkbox" id="famFiles"><label style="margin:0;text-transform:none;font-weight:600;">Familiarization with file locations</label></div>
+  <div class="checkbox-row"><input type="checkbox" id="famIntro"><label style="margin:0;text-transform:none;font-weight:600;">Introduction with client / own staff</label></div>
+</div>
+
+<div class="card">
+  <h2>Tasks & Responsibilities</h2>
+  <table class="tasks" id="taskTable">
+    <thead>
+      <tr><th>Category</th><th>Task Type</th><th>Description</th><th>Frequency</th><th>Due (Day/Date)</th><th></th></tr>
+    </thead>
+    <tbody id="taskBody"></tbody>
+  </table>
+  <div class="btn-row"><button class="btn-add" onclick="addTaskRow()">+ Add Task Row</button></div>
+  <div style="font-size:11px;color:#8891a0;margin-top:10px;">
+    Default RASCI applied to every row: Responsible: Reliever &middot; Accountable: Cluster HSE Lead &middot;
+    Support: HSE Team &middot; Consult: HSE Manager &middot; Inform: Site Manager.
+  </div>
+</div>
+
+<div class="card">
+  <h2>Approval Routing</h2>
+  <div style="font-size:12.5px;color:#8891a0;margin-bottom:6px;">
+    Select whoever needs to approve this specific handover - varies by role and situation, so nothing is pre-fixed.
+    Typically the outgoing employee's Line Manager at minimum.
+  </div>
+  <select id="approverPicker" style="margin-top:4px;"></select>
+  <div class="btn-row"><button class="btn-add" onclick="addApprover()">+ Add as Approver</button></div>
+  <div class="approver-chips" id="approverChips"></div>
+</div>
+
+<div class="card">
+  <button id="submitBtn" onclick="submitForm()">Submit Handover</button>
+</div>
+<div id="status"></div>
+</div>
+
+<script>
+  const BASE_URL = "https://script.google.com/macros/s/AKfycbxY_ju_CjS-6vBox8XZ7dJe9KtHXpBcSEBSABxmrS1IGAfcd5O10qwJTEN3JfskehJX/exec";
+  let EMPLOYEES = [];
+  let selectedApprovers = [];
+
+  function setStatus(msg, cls) { const el = document.getElementById('status'); el.className = cls; el.textContent = msg; }
+
+  function loadInitialData() {
+    fetch(BASE_URL + '?action=api').then(r => r.json()).then(data => {
+      EMPLOYEES = data.personnel || [];
+      const empOptionsHtml = '<option value="">Select Employee ID</option>' +
+        EMPLOYEES.map(p => '<option value="' + p.employeeId + '">' + p.employeeId + ' - ' + p.name + '</option>').join('');
+      document.getElementById('hoId').innerHTML = empOptionsHtml;
+      document.getElementById('toId').innerHTML = empOptionsHtml;
+      document.getElementById('approverPicker').innerHTML = empOptionsHtml;
+    }).catch(err => setStatus('Could not load employee list: ' + err.message, 'err'));
+  }
+
+  function addApprover() {
+    const sel = document.getElementById('approverPicker');
+    const id = sel.value;
+    if (!id) return;
+    if (selectedApprovers.find(a => a.id === id)) return;
+    const emp = EMPLOYEES.find(p => p.employeeId === id);
+    selectedApprovers.push({ id: id, name: emp ? emp.name : id, role: emp ? emp.role : '' });
+    renderApproverChips();
+    sel.value = "";
+  }
+  function removeApprover(id) {
+    selectedApprovers = selectedApprovers.filter(a => a.id !== id);
+    renderApproverChips();
+  }
+  function renderApproverChips() {
+    document.getElementById('approverChips').innerHTML = selectedApprovers.map(a =>
+      '<span class="approver-chip">' + a.name + ' (' + a.role + ')<button onclick="removeApprover(\'' + a.id + '\')">&times;</button></span>'
+    ).join('');
+  }
+
+  let taskRowCount = 0;
+  function addTaskRow() {
+    taskRowCount++;
+    const tbody = document.getElementById('taskBody');
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td><select class="t-cat"><option>Information</option><option>Action</option></select></td>' +
+      '<td><select class="t-type"><option>Audits</option><option>Data Entry</option><option>Documention & Records</option>' +
+        '<option>Emergency Drills</option><option>HSE Campaigns</option><option>Incident Reports / Investigations</option>' +
+        '<option>Inspections</option><option>Management site visits</option><option>Meetings</option>' +
+        '<option>Report Submissions</option><option>HSE Induction / Trainings</option><option>Other Follow-ups</option></select></td>' +
+      '<td><input type="text" class="t-desc" placeholder="Task description"></td>' +
+      '<td><select class="t-freq"><option>Progressive</option><option>Daily</option><option>Weekly</option><option>Bi Weekly</option>' +
+        '<option>Monthly</option><option>Bi-Monthly</option><option>Quarterly</option><option>Half yearly</option><option>Annually</option></select></td>' +
+      '<td><input type="text" class="t-due" placeholder="Day/Date"></td>' +
+      '<td><button class="btn-remove" onclick="this.closest(\'tr\').remove()">&times;</button></td>';
+    tbody.appendChild(tr);
+  }
+
+  function submitForm() {
+    const hoId = document.getElementById('hoId').value;
+    const toId = document.getElementById('toId').value;
+    if (!hoId || !toId) { setStatus('Select both Handed Over By and Taken Over By.', 'err'); return; }
+    if (!document.getElementById('periodFrom').value || !document.getElementById('periodTo').value) {
+      setStatus('Handover period From/To are required.', 'err'); return;
+    }
+    if (selectedApprovers.length === 0) { setStatus('Select at least one approver.', 'err'); return; }
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true; btn.textContent = 'Submitting...';
+
+    const tasks = Array.from(document.querySelectorAll('#taskBody tr')).map(tr => ({
+      category: tr.querySelector('.t-cat').value,
+      taskType: tr.querySelector('.t-type').value,
+      taskDescription: tr.querySelector('.t-desc').value,
+      frequency: tr.querySelector('.t-freq').value,
+      taskDueBy: tr.querySelector('.t-due').value
+    })).filter(t => t.taskDescription.trim() !== '');
+
+    const payload = {
+      header: {
+        handedOverById: hoId, handedOverByContact: document.getElementById('hoContact').value,
+        takenOverById: toId, takenOverByContact: document.getElementById('toContact').value,
+        relieverHasPriorExperience: document.getElementById('priorExp').checked,
+        reasonForHandover: document.getElementById('reason').value,
+        handoverPeriodFrom: document.getElementById('periodFrom').value,
+        handoverPeriodTo: document.getElementById('periodTo').value,
+        famUsername: document.getElementById('famUsername').checked,
+        famPassword: document.getElementById('famPassword').checked,
+        famSharedFolders: document.getElementById('famFolders').checked,
+        famFileLocations: document.getElementById('famFiles').checked,
+        famIntroduction: document.getElementById('famIntro').checked,
+        approverIds: selectedApprovers.map(a => a.id)
+      },
+      tasks: tasks
+    };
+
+    fetch(BASE_URL, { method: 'POST', body: JSON.stringify({ action: 'submitHandover', payload: payload }) })
+      .then(r => r.json())
+      .then(result => {
+        btn.disabled = false; btn.textContent = 'Submit Handover';
+        if (!result.success) { setStatus('Error: ' + result.error, 'err'); return; }
+        setStatus('Handover submitted (' + result.handoverId + '). Approval requests sent to ' + selectedApprovers.length + ' approver(s).', 'ok');
+      })
+      .catch(err => { btn.disabled = false; btn.textContent = 'Submit Handover'; setStatus('Submission failed: ' + err.message, 'err'); });
+  }
+
+  function onGateUnlocked() {
+    loadInitialData();
+    addTaskRow(); addTaskRow(); addTaskRow();
+  }
+</script>
+</body>
+</html>
