@@ -274,6 +274,48 @@
     </div>
 
     <div class="panel">
+      <h2>HSEA-PRISM - Divisions Enabled</h2>
+      <div style="font-size:11.5px;color:#8891a0;margin-bottom:10px;">Only employees in these Divisions are scored in HSEA-PRISM. One per line - add more as you roll PRISM out further.</div>
+      <label style="display:block;font-size:10.5px;font-weight:700;color:#8891a0;text-transform:uppercase;margin-top:8px;">Enabled Divisions</label>
+      <textarea id="prismDivisions" rows="5" placeholder="e.g.&#10;O&amp;G" style="width:100%;padding:7px 9px;border-radius:6px;border:1px solid #dfe3e7;font-size:12.5px;margin-top:4px;font-family:inherit;"></textarea>
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn btn-primary" onclick="savePrismDivisions()">Save Enabled Divisions</button>
+      </div>
+      <div id="prismDivisionsStatus" style="margin-top:10px;font-size:12px;display:none;padding:8px 12px;border-radius:8px;"></div>
+    </div>
+
+    <div class="panel">
+      <h2>HSEA-PRISM - KPI Titles</h2>
+      <div style="font-size:11.5px;color:#8891a0;margin-bottom:10px;">
+        10 KPI slots per tier. Slots 1-3 are system-calculated (ATR Completion, Handover Submission Completeness,
+        Received Handover Timely Closeout) - title text is editable but the calculation itself is automatic.
+        Slots 4-10 are yours to define (title + target instances per 2-week period) - these show "Not Configured"
+        until a manual-entry mechanism is built, so define them whenever you're ready, no rush.
+      </div>
+      <label style="display:block;font-size:10.5px;font-weight:700;color:#8891a0;text-transform:uppercase;margin-top:8px;">Tier</label>
+      <select id="prismTierSelect" onchange="loadPrismKpiDefinitions()" style="width:100%;padding:7px 9px;border-radius:6px;border:1px solid #dfe3e7;font-size:12.5px;margin-top:4px;">
+        <option>HSE Advisor</option>
+        <option>HSE Site Lead</option>
+        <option>HSE Cluster Lead</option>
+      </select>
+      <table id="prismKpiTable" style="width:100%;margin-top:14px;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="text-align:left;color:#8891a0;font-size:10.5px;text-transform:uppercase;">
+            <th style="padding:4px 6px;width:40px;">Slot</th>
+            <th style="padding:4px 6px;">KPI Title</th>
+            <th style="padding:4px 6px;width:140px;">Target / 2wk Period</th>
+            <th style="padding:4px 6px;width:70px;">Type</th>
+          </tr>
+        </thead>
+        <tbody id="prismKpiBody"></tbody>
+      </table>
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn btn-primary" onclick="savePrismKpiDefinitionsFn()">Save KPI Titles for This Tier</button>
+      </div>
+      <div id="prismKpiStatus" style="margin-top:10px;font-size:12px;display:none;padding:8px 12px;border-radius:8px;"></div>
+    </div>
+
+    <div class="panel">
       <h2>Registration Dropdown Options</h2>
       <div style="font-size:11.5px;color:#8891a0;margin-bottom:10px;">One value per line. Controls the Cluster/Location, Division, Role, and Shift dropdowns on Team Registration, the HSE Team Directory filters, and the Transfer destination list.</div>
 
@@ -449,6 +491,8 @@ function unlockAdminContent() {
   runAll();
   loadApprovers();
   loadManpowerPermitted();
+  loadPrismDivisions();
+  loadPrismKpiDefinitions();
   loadDropdownOptions();
 }
 
@@ -675,6 +719,76 @@ function saveManpowerPermitted() {
     }).catch(function(err) {
       el.style.background = '#fdecea'; el.style.color = '#c62828';
       el.textContent = 'Error: ' + err.message;
+    });
+  });
+}
+
+const PRISM_SYSTEM_SLOTS = [1, 2, 3];
+
+function loadPrismDivisions() {
+  adminGet('prismDivisionScope').then(function(r) {
+    document.getElementById('prismDivisions').value = (r.divisions || []).join('\n');
+  });
+}
+
+function savePrismDivisions() {
+  requireAdminKey('Confirm admin key to save PRISM enabled divisions.', function(key) {
+    const el = document.getElementById('prismDivisionsStatus');
+    el.style.display = 'block'; el.style.background = '#eceff1'; el.textContent = 'Saving...';
+    adminPost('savePrismDivisionScope', { divisions: document.getElementById('prismDivisions').value }, key).then(function(r) {
+      el.style.background = r.success ? '#e8f5e9' : '#fdecea';
+      el.style.color = r.success ? '#2e7d32' : '#c62828';
+      el.textContent = r.success ? r.message : r.error;
+    }).catch(function(err) {
+      el.style.background = '#fdecea'; el.style.color = '#c62828'; el.textContent = 'Error: ' + err.message;
+    });
+  });
+}
+
+function loadPrismKpiDefinitions() {
+  const tier = document.getElementById('prismTierSelect').value;
+  adminGet('prismKpiDefinitions').then(function(r) {
+    const tierRows = (r.definitions || []).filter(d => d.Tier === tier);
+    const body = document.getElementById('prismKpiBody');
+    body.innerHTML = '';
+    for (let slot = 1; slot <= 10; slot++) {
+      const row = tierRows.find(d => Number(d.SlotNumber) === slot) || {};
+      const isSystem = PRISM_SYSTEM_SLOTS.includes(slot);
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td style="padding:6px;">' + slot + '</td>' +
+        '<td style="padding:6px;"><input type="text" class="kpi-title" data-slot="' + slot + '" value="' + (row.KPITitle || '') + '" ' +
+          (isSystem ? '' : '') + ' style="width:100%;padding:5px 7px;border-radius:5px;border:1px solid #dfe3e7;font-size:12px;"></td>' +
+        '<td style="padding:6px;"><input type="number" class="kpi-planned" data-slot="' + slot + '" value="' + (row.PlannedInstancesPerPeriod || '') + '" ' +
+          (isSystem ? 'disabled title="System-calculated - no fixed target" style="opacity:0.5;"' : '') +
+          ' style="width:100%;padding:5px 7px;border-radius:5px;border:1px solid #dfe3e7;font-size:12px;"></td>' +
+        '<td style="padding:6px;color:' + (isSystem ? '#21409a' : '#8891a0') + ';font-weight:700;font-size:11px;">' + (isSystem ? 'Auto' : 'Manual') + '</td>';
+      body.appendChild(tr);
+    }
+  });
+}
+
+function savePrismKpiDefinitionsFn() {
+  const tier = document.getElementById('prismTierSelect').value;
+  const slots = [];
+  document.querySelectorAll('#prismKpiBody tr').forEach(function(tr) {
+    const slot = Number(tr.querySelector('.kpi-title').dataset.slot);
+    if (PRISM_SYSTEM_SLOTS.includes(slot)) return; // system slots not editable here
+    const title = tr.querySelector('.kpi-title').value.trim();
+    const planned = tr.querySelector('.kpi-planned').value;
+    if (title) slots.push({ slot: slot, title: title, planned: planned });
+  });
+
+  requireAdminKey('Confirm admin key to save PRISM KPI titles.', function(key) {
+    const el = document.getElementById('prismKpiStatus');
+    el.style.display = 'block'; el.style.background = '#eceff1'; el.textContent = 'Saving...';
+    adminPost('savePrismKpiDefinitions', { tier: tier, slots: slots }, key).then(function(r) {
+      el.style.background = r.success ? '#e8f5e9' : '#fdecea';
+      el.style.color = r.success ? '#2e7d32' : '#c62828';
+      el.textContent = r.success ? r.message : r.error;
+      if (r.success) loadPrismKpiDefinitions();
+    }).catch(function(err) {
+      el.style.background = '#fdecea'; el.style.color = '#c62828'; el.textContent = 'Error: ' + err.message;
     });
   });
 }
