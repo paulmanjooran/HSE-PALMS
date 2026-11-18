@@ -40,9 +40,11 @@
   tr.total-row td { background: rgba(33,64,154,0.10); font-weight: 800; color: #16296b; }
   .legacy-flag { font-size: 9px; color: var(--orange); display: block; font-weight: 700; margin-top: 1px; cursor: help; }
   button { border: none; border-radius: 9px; padding: 10px 18px; font-family: 'Manrope'; font-weight: 700; font-size: 13px; cursor: pointer; }
-  #saveBtn { background: linear-gradient(135deg, var(--orange), #ff9d4d); color: #fff; margin-top: 18px; box-shadow: 0 4px 14px rgba(245,130,32,0.4); }
-  #saveBtn:disabled { background: #aaa; box-shadow: none; }
-  #status { max-width: 1180px; margin: 12px auto; font-size: 13px; padding: 10px 14px; border-radius: 9px; display: none; }
+  #saveBtn { background: linear-gradient(135deg, var(--orange), #ff9d4d); color: #fff; margin-top: 18px; box-shadow: 0 4px 14px rgba(245,130,32,0.4); transition: background 0.2s; }
+  #saveBtn:disabled { background: #aaa; box-shadow: none; cursor: not-allowed; }
+  #saveBtn.save-success { background: var(--green); box-shadow: 0 4px 14px rgba(46,125,50,0.4); }
+  .cell-input:disabled { opacity: 0.6; cursor: not-allowed; }
+  #status { margin-top: 12px; font-size: 13.5px; font-weight: 600; padding: 12px 16px; border-radius: 9px; display: none; }
   #status.ok { display: block; background: #e8f5e9; color: #2e7d32; }
   #status.err { display: block; background: #fdecea; color: #c62828; }
 </style>
@@ -191,8 +193,8 @@
     <tfoot><tr class="total-row" id="totalRow"></tr></tfoot>
   </table>
   <button id="saveBtn" onclick="submitMonth()">Save Month</button>
+  <div id="status"></div>
 </div>
-<div id="status"></div>
 </div>
 
 <script>
@@ -265,9 +267,13 @@
         const prefill = {};
         (rows || []).forEach(r => prefill[r.Cluster] = r);
         buildRows(prefill);
-        setStatus(rows.length ? 'Loaded existing data for ' + month + '.' : 'No data yet for ' + month + ' - starting blank.', 'ok');
+        setStatus(rows.length ? '\u2713 Confirmed: ' + month + ' is saved and loaded from the sheet.' : 'No data yet for ' + month + ' - starting blank.', 'ok');
       })
       .catch(err => setStatus('Could not load: ' + err.message, 'err'));
+  }
+
+  function setInputsLocked(locked) {
+    document.querySelectorAll('.cell-input').forEach(el => el.disabled = locked);
   }
 
   function submitMonth() {
@@ -285,18 +291,37 @@
     }));
 
     const btn = document.getElementById('saveBtn');
-    btn.disabled = true; btn.textContent = 'Saving...';
+    btn.disabled = true; btn.textContent = 'Saving...'; btn.classList.remove('save-success');
+    setInputsLocked(true);
+    setStatus('Saving to the sheet...', 'ok');
 
     fetch(BASE_URL, { method: 'POST', body: JSON.stringify({
       action: 'submitManpower', payload: { month: month, enteredById: enteredById, entries: entries }
     })})
       .then(r => r.json())
       .then(result => {
-        btn.disabled = false; btn.textContent = 'Save Month';
-        if (!result.success) { setStatus('Error: ' + result.error, 'err'); return; }
-        setStatus('Saved ' + result.month + '. This now feeds the Cluster Summary compliance table in HSE Team Directory.', 'ok');
+        setInputsLocked(false);
+        if (!result.success) {
+          btn.disabled = false; btn.textContent = 'Save Month';
+          setStatus('Error: ' + result.error, 'err');
+          return;
+        }
+        // Success: show a clear green confirmation on the button itself, then
+        // re-fetch this exact month straight from the server (not just trusting
+        // the form's own state) so what's on screen is PROVEN to match the sheet.
+        btn.textContent = '\u2713 Saved';
+        btn.classList.add('save-success');
+        setStatus('Saved ' + result.month + ' - reloading to confirm...', 'ok');
+        loadMonth();
+        setTimeout(() => {
+          btn.disabled = false; btn.textContent = 'Save Month'; btn.classList.remove('save-success');
+        }, 2000);
       })
-      .catch(err => { btn.disabled = false; btn.textContent = 'Save Month'; setStatus('Failed: ' + err.message, 'err'); });
+      .catch(err => {
+        setInputsLocked(false);
+        btn.disabled = false; btn.textContent = 'Save Month';
+        setStatus('Failed: ' + err.message, 'err');
+      });
   }
 
   function onGateUnlocked() {
