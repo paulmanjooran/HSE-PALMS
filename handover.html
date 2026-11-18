@@ -203,7 +203,7 @@
   <h2>Tasks & Responsibilities</h2>
   <table class="tasks" id="taskTable">
     <thead>
-      <tr><th>Category</th><th>Task Type</th><th>Description</th><th>Frequency</th><th>Due (Day/Date)</th><th></th></tr>
+      <tr><th>Category</th><th>Task Type</th><th>Description</th><th>Frequency</th><th>Due (Day/Date)</th><th>Attachment</th><th></th></tr>
     </thead>
     <tbody id="taskBody"></tbody>
   </table>
@@ -284,8 +284,25 @@
       '<td><select class="t-freq"><option>Progressive</option><option>Daily</option><option>Weekly</option><option>Bi Weekly</option>' +
         '<option>Monthly</option><option>Bi-Monthly</option><option>Quarterly</option><option>Half yearly</option><option>Annually</option></select></td>' +
       '<td><input type="text" class="t-due" placeholder="Day/Date"></td>' +
+      '<td><input type="file" class="t-attachment" accept="image/*,.pdf,.doc,.docx" style="font-size:10.5px;width:110px;"></td>' +
       '<td><button class="btn-remove" onclick="this.closest(\'tr\').remove()">&times;</button></td>';
     tbody.appendChild(tr);
+  }
+
+  // Reads a File object as base64 (without the "data:mime;base64," prefix),
+  // resolving to {base64, mimeType, fileName} - or null if no file was chosen.
+  function readFileAsBase64(fileInput) {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return Promise.resolve(null);
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result.split(',')[1]; // strip the "data:...;base64," prefix
+        resolve({ base64: base64, mimeType: file.type || 'application/octet-stream', fileName: file.name });
+      };
+      reader.onerror = () => reject(new Error('Could not read file: ' + file.name));
+      reader.readAsDataURL(file);
+    });
   }
 
   function submitForm() {
@@ -300,33 +317,48 @@
     const btn = document.getElementById('submitBtn');
     btn.disabled = true; btn.textContent = 'Submitting...';
 
-    const tasks = Array.from(document.querySelectorAll('#taskBody tr')).map(tr => ({
-      category: tr.querySelector('.t-cat').value,
-      taskType: tr.querySelector('.t-type').value,
-      taskDescription: tr.querySelector('.t-desc').value,
-      frequency: tr.querySelector('.t-freq').value,
-      taskDueBy: tr.querySelector('.t-due').value
-    })).filter(t => t.taskDescription.trim() !== '');
+    const taskRows = Array.from(document.querySelectorAll('#taskBody tr'))
+      .filter(tr => tr.querySelector('.t-desc').value.trim() !== '');
 
-    const payload = {
-      header: {
-        handedOverById: hoId, handedOverByContact: document.getElementById('hoContact').value,
-        takenOverById: toId, takenOverByContact: document.getElementById('toContact').value,
-        relieverHasPriorExperience: document.getElementById('priorExp').checked,
-        reasonForHandover: document.getElementById('reason').value,
-        handoverPeriodFrom: document.getElementById('periodFrom').value,
-        handoverPeriodTo: document.getElementById('periodTo').value,
-        famUsername: document.getElementById('famUsername').checked,
-        famPassword: document.getElementById('famPassword').checked,
-        famSharedFolders: document.getElementById('famFolders').checked,
-        famFileLocations: document.getElementById('famFiles').checked,
-        famIntroduction: document.getElementById('famIntro').checked,
-        approverIds: selectedApprovers.map(a => a.id)
-      },
-      tasks: tasks
-    };
+    // Read every row's attachment (if any) in parallel before building the
+    // payload - file reading is async, so the POST only fires once all of
+    // them have resolved.
+    Promise.all(taskRows.map(tr => readFileAsBase64(tr.querySelector('.t-attachment'))))
+      .then(attachments => {
+        const tasks = taskRows.map((tr, i) => {
+          const att = attachments[i];
+          return {
+            category: tr.querySelector('.t-cat').value,
+            taskType: tr.querySelector('.t-type').value,
+            taskDescription: tr.querySelector('.t-desc').value,
+            frequency: tr.querySelector('.t-freq').value,
+            taskDueBy: tr.querySelector('.t-due').value,
+            attachmentBase64: att ? att.base64 : '',
+            attachmentMimeType: att ? att.mimeType : '',
+            attachmentFileName: att ? att.fileName : ''
+          };
+        });
 
-    fetch(BASE_URL, { method: 'POST', body: JSON.stringify({ action: 'submitHandover', payload: payload }) })
+        const payload = {
+          header: {
+            handedOverById: hoId, handedOverByContact: document.getElementById('hoContact').value,
+            takenOverById: toId, takenOverByContact: document.getElementById('toContact').value,
+            relieverHasPriorExperience: document.getElementById('priorExp').checked,
+            reasonForHandover: document.getElementById('reason').value,
+            handoverPeriodFrom: document.getElementById('periodFrom').value,
+            handoverPeriodTo: document.getElementById('periodTo').value,
+            famUsername: document.getElementById('famUsername').checked,
+            famPassword: document.getElementById('famPassword').checked,
+            famSharedFolders: document.getElementById('famFolders').checked,
+            famFileLocations: document.getElementById('famFiles').checked,
+            famIntroduction: document.getElementById('famIntro').checked,
+            approverIds: selectedApprovers.map(a => a.id)
+          },
+          tasks: tasks
+        };
+
+        return fetch(BASE_URL, { method: 'POST', body: JSON.stringify({ action: 'submitHandover', payload: payload }) });
+      })
       .then(r => r.json())
       .then(result => {
         btn.disabled = false; btn.textContent = 'Submit Handover';
