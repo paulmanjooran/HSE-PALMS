@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --dark: #4d555b; --blue: #21409a; --orange: #f58220; --green: #2e7d32; --red: #c62828; --glass: rgba(255,255,255,0.65); --glass-border: rgba(255,255,255,0.85); }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: 'Inter', sans-serif; color: var(--dark); padding: 24px 16px 60px;
+    background: radial-gradient(circle at 10% 8%, rgba(33,64,154,0.18), transparent 42%),
+                radial-gradient(circle at 90% 12%, rgba(245,130,32,0.16), transparent 45%),
+                linear-gradient(160deg, #f4f0fb 0%, #eef4fb 50%, #fdf1f0 100%);
+    background-attachment: fixed;
+  }
+  h1, .brand-font { font-family: 'Manrope', sans-serif; }
+  .card {
+    max-width: 1280px; margin: 0 auto 20px; background: var(--glass); backdrop-filter: blur(20px) saturate(1.5);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5); border: 1px solid var(--glass-border); border-radius: 18px;
+    padding: 22px 26px; box-shadow: 0 10px 30px rgba(30,40,60,0.10);
+  }
+  h1 { font-size: 20px; margin: 0 0 2px; }
+  .sub { font-size: 12px; color: #8891a0; margin-bottom: 4px; }
+  .note { background: rgba(245,130,32,0.1); border: 1px solid rgba(245,130,32,0.3); border-radius: 12px; padding: 10px 16px; font-size: 12px; color: #8a4a0a; margin: 14px 0; }
+  .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .filter-bar select, .filter-bar input { padding: 8px 11px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); font-size: 12.5px; background: rgba(255,255,255,0.7); }
+  .filter-bar input[type="text"] { min-width: 180px; }
+  label { display: block; font-size: 10px; font-weight: 700; color: #8891a0; text-transform: uppercase; letter-spacing: .03em; margin-bottom: 3px; }
+  button { border: none; border-radius: 9px; padding: 9px 16px; font-family: 'Manrope'; font-weight: 700; font-size: 12.5px; cursor: pointer; }
+  .btn-primary { background: linear-gradient(135deg, var(--orange), #ff9d4d); color: #fff; }
+  .btn-ghost { background: rgba(255,255,255,0.7); color: var(--dark); }
+  .period-label { font-family: 'Manrope'; font-weight: 800; font-size: 13px; color: var(--blue); margin-top: 10px; }
+  table { width: 100%; border-collapse: separate; border-spacing: 0 6px; font-size: 12.5px; margin-top: 14px; }
+  th { text-align: left; color: #8891a0; font-weight: 700; padding: 6px 10px; font-size: 10px; text-transform: uppercase; }
+  td { background: rgba(255,255,255,0.65); padding: 10px; vertical-align: middle; }
+  td:first-child { border-radius: 8px 0 0 8px; }
+  td:last-child { border-radius: 0 8px 8px 0; }
+  .score-pill { display: inline-block; padding: 4px 12px; border-radius: 14px; font-weight: 800; font-size: 12.5px; color: #fff; }
+  .score-high { background: var(--green); }
+  .score-mid { background: var(--orange); }
+  .score-low { background: var(--red); }
+  .score-none { background: #b0b6bd; }
+  .tier-pill { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 8px; background: rgba(33,64,154,0.1); color: var(--blue); }
+  .expand-row { display: none; }
+  .expand-row.show { display: table-row; }
+  .kpi-detail { font-size: 11.5px; color: #8891a0; padding: 10px 16px; }
+  .kpi-detail .kpi-line { margin: 3px 0; }
+  .team-note { font-size: 10.5px; color: #8891a0; margin-top: 2px; }
+  #status { max-width: 1280px; margin: 12px auto; font-size: 13px; padding: 10px 14px; border-radius: 9px; display: none; }
+  #status.ok { display: block; background: #e8f5e9; color: #2e7d32; }
+  #status.err { display: block; background: #fdecea; color: #c62828; }
+</style>
+<style>
+  #loginGate {
+    position: fixed; inset: 0; background: linear-gradient(135deg, #4d555b, #21409a); z-index: 9999;
+    display: flex; align-items: center; justify-content: center; font-family: 'Segoe UI', Arial, sans-serif;
+  }
+  #loginGate .box { background: #fff; border-radius: 16px; padding: 36px; max-width: 380px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+  #loginGate h2 { margin: 0 0 4px; color: #4d555b; font-size: 19px; }
+  #loginGate .sub { color: #8891a0; font-size: 12.5px; margin-bottom: 22px; }
+  #loginGate label { display: block; font-size: 11.5px; font-weight: 700; color: #8891a0; text-transform: uppercase; margin-top: 14px; margin-bottom: 4px; }
+  #loginGate input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+  #loginGate button.primary { width: 100%; margin-top: 20px; padding: 12px; background: #21409a; color: #fff; border: none;
+    border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  #loginGate button.primary:disabled { background: #aaa; cursor: not-allowed; }
+  #loginGate .forgot-link { text-align: center; margin-top: 14px; font-size: 12.5px; color: #21409a; cursor: pointer; text-decoration: underline; }
+  #loginGate #gateStatus { margin-top: 14px; font-size: 12.5px; padding: 9px 12px; border-radius: 7px; display: none; }
+  #loginGate #gateStatus.err { display: block; background: #fdecea; color: #c62828; }
+  #loginGate #gateStatus.ok { display: block; background: #e8f5e9; color: #2e7d32; }
+  #loginGate #forgotSection { display: none; }
+  #appContent { display: none; }
+</style>
+</head>
+<body>
+<div id="loginGate">
+  <div class="box">
+    <div id="loginSection">
+      <h2>HSE PALMS</h2>
+      <div class="sub">Sign in to continue</div>
+      <label>Username</label>
+      <input type="text" id="gateUsername" value="ATNM HSE" disabled style="background:#f2f4f6;color:#8891a0;">
+      <label>Password</label>
+      <input type="password" id="gatePassword">
+      <button class="primary" id="gateLoginBtn" onclick="attemptLogin()">Sign In</button>
+      <div class="forgot-link" onclick="showForgot()">Forgot password?</div>
+      <div id="gateStatus"></div>
+    </div>
+    <div id="forgotSection">
+      <h2>Forgot Password</h2>
+      <div class="sub">Enter your @altasnim.com email - the password will be sent to you.</div>
+      <label>Email</label>
+      <input type="email" id="forgotEmail" placeholder="yourname@altasnim.com">
+      <button class="primary" id="forgotBtn" onclick="attemptForgot()">Send Password</button>
+      <div class="forgot-link" onclick="showLogin()">Back to sign in</div>
+      <div id="gateStatus2"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  function setGateStatus(id, msg, cls) {
+    const el = document.getElementById(id);
+    el.className = cls; el.textContent = msg;
+  }
+  window.showForgot = function() {
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('forgotSection').style.display = 'block';
+  };
+  window.showLogin = function() {
+    document.getElementById('forgotSection').style.display = 'none';
+    document.getElementById('loginSection').style.display = 'block';
+  };
+  window.attemptLogin = function() {
+    const username = document.getElementById('gateUsername').value.trim();
+    const password = document.getElementById('gatePassword').value;
+    const btn = document.getElementById('gateLoginBtn');
+    btn.disabled = true; btn.textContent = 'Checking...';
+    fetch(BASE_URL + '?action=checkLogin&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password))
+      .then(function(res) { return res.json(); })
+      .then(function(result) {
+        btn.disabled = false; btn.textContent = 'Sign In';
+        if (!result.success) { setGateStatus('gateStatus', result.error, 'err'); return; }
+        sessionStorage.setItem('hsePalmsAuth', 'true');
+        document.getElementById('loginGate').style.display = 'none';
+        document.getElementById('appContent').style.display = 'block';
+        if (typeof onGateUnlocked === 'function') onGateUnlocked();
+      })
+      .catch(function(err) {
+        btn.disabled = false; btn.textContent = 'Sign In';
+        setGateStatus('gateStatus', 'Login failed: ' + err.message, 'err');
+      });
+  };
+  window.attemptForgot = function() {
+    const email = document.getElementById('forgotEmail').value.trim();
+    const btn = document.getElementById('forgotBtn');
+    btn.disabled = true; btn.textContent = 'Sending...';
+    fetch(BASE_URL + '?action=forgotPassword&email=' + encodeURIComponent(email))
+      .then(function(res) { return res.json(); })
+      .then(function(result) {
+        btn.disabled = false; btn.textContent = 'Send Password';
+        setGateStatus('gateStatus2', result.success ? result.message : result.error, result.success ? 'ok' : 'err');
+      })
+      .catch(function(err) {
+        btn.disabled = false; btn.textContent = 'Send Password';
+        setGateStatus('gateStatus2', 'Failed: ' + err.message, 'err');
+      });
+  };
+  document.addEventListener('DOMContentLoaded', function() {
+    if (sessionStorage.getItem('hsePalmsAuth') === 'true') {
+      document.getElementById('loginGate').style.display = 'none';
+      document.getElementById('appContent').style.display = 'block';
+      if (typeof onGateUnlocked === 'function') onGateUnlocked();
+    }
+  });
+})();
+</script>
+<div id="appContent">
+<div class="card">
+  <h1>HSEA-PRISM</h1>
+  <div class="sub">HSE Advisors Performance Review and Improvement System Manager</div>
+  <div class="note">
+    Scores blend each person's own completion data (70%) with their direct reports' average
+    score (30%), rolling HSE Advisor &rarr; Site HSE Lead &rarr; Cluster HSE Lead. Only 3 KPIs per
+    tier are calculated automatically right now (ATR Completion, Handover Submission
+    Completeness, Received Handover Timely Closeout) - the rest show "Not Configured" until
+    manual entry is built.
+  </div>
+
+  <div class="filter-bar">
+    <div><label>Employee ID</label><input type="text" id="fEmployeeId" placeholder="e.g. 118022"></div>
+    <div><label>Name</label><input type="text" id="fName" placeholder="Search name"></div>
+    <div><label>Cluster</label><select id="fCluster"><option value="">All</option></select></div>
+    <div><label>Division</label><select id="fDivision"><option value="">All</option></select></div>
+    <div><label>Period</label><select id="fPeriod"></select></div>
+    <div><label>Search</label><input type="text" id="fSearch" placeholder="Name or ID"></div>
+    <div style="align-self:flex-end;"><button class="btn-primary" onclick="loadReport()">Apply Filters</button></div>
+    <div style="align-self:flex-end;"><button class="btn-ghost" onclick="resetFilters()">Reset</button></div>
+  </div>
+  <div class="period-label" id="periodLabel"></div>
+</div>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr><th></th><th>Name</th><th>Tier</th><th>Cluster</th><th>Division</th><th>Own Score</th><th>Team Size</th><th>Blended Score</th></tr>
+    </thead>
+    <tbody id="reportBody"></tbody>
+  </table>
+</div>
+<div id="status"></div>
+</div>
+
+<script>
+  const BASE_URL = "https://script.google.com/macros/s/" + "AKfycbxY_ju_CjS-6vBox8XZ7dJe9Kt" + "HXpBcSEBSABxmrS1IGAfcd5O10qwJT" + "EN3JfskehJX" + "/exec";
+  let PERSONNEL = [];
+  let CURRENT_ROWS = [];
+
+  function setStatus(msg, cls) { const el = document.getElementById('status'); el.className = cls; el.textContent = msg; }
+
+  function scoreClass(pct) {
+    if (pct === null || pct === undefined) return 'score-none';
+    if (pct >= 0.85) return 'score-high';
+    if (pct >= 0.6) return 'score-mid';
+    return 'score-low';
+  }
+  function fmtPct(pct) { return (pct === null || pct === undefined) ? 'No data' : Math.round(pct * 100) + '%'; }
+
+  function buildPeriodOptions() {
+    const sel = document.getElementById('fPeriod');
+    const anchor = new Date('2026-01-05');
+    const now = new Date();
+    const currentPeriod = Math.floor((now - anchor) / (1000 * 60 * 60 * 24 * 14));
+    let html = '';
+    for (let p = currentPeriod; p >= Math.max(0, currentPeriod - 12); p--) {
+      const start = new Date(anchor); start.setDate(start.getDate() + p * 14);
+      const end = new Date(start); end.setDate(end.getDate() + 13);
+      const label = start.toLocaleDateString() + ' - ' + end.toLocaleDateString() + (p === currentPeriod ? ' (current)' : '');
+      html += '<option value="' + p + '">' + label + '</option>';
+    }
+    sel.innerHTML = html;
+  }
+
+  function loadFilterOptions() {
+    fetch(BASE_URL + '?action=api').then(r => r.json()).then(data => {
+      PERSONNEL = data.personnel || [];
+      const clusters = [...new Set(PERSONNEL.map(p => p.cluster).filter(Boolean))].sort();
+      const divisions = [...new Set(PERSONNEL.map(p => p.division).filter(Boolean))].sort();
+      document.getElementById('fCluster').innerHTML = '<option value="">All</option>' + clusters.map(c => '<option>' + c + '</option>').join('');
+      document.getElementById('fDivision').innerHTML = '<option value="">All</option>' + divisions.map(d => '<option>' + d + '</option>').join('');
+    });
+  }
+
+  function resetFilters() {
+    document.getElementById('fEmployeeId').value = '';
+    document.getElementById('fName').value = '';
+    document.getElementById('fCluster').value = '';
+    document.getElementById('fDivision').value = '';
+    document.getElementById('fSearch').value = '';
+    loadReport();
+  }
+
+  function loadReport() {
+    const params = new URLSearchParams({
+      action: 'prismReport',
+      employeeId: document.getElementById('fEmployeeId').value,
+      name: document.getElementById('fName').value,
+      cluster: document.getElementById('fCluster').value,
+      division: document.getElementById('fDivision').value,
+      periodNumber: document.getElementById('fPeriod').value,
+      search: document.getElementById('fSearch').value
+    });
+    setStatus('Loading...', 'ok');
+    fetch(BASE_URL + '?' + params.toString()).then(r => r.json()).then(result => {
+      if (!result.success) { setStatus('Error: ' + result.error, 'err'); return; }
+      setStatus('', '');
+      document.getElementById('status').style.display = 'none';
+      CURRENT_ROWS = result.data.rows;
+      const p = result.data.period;
+      document.getElementById('periodLabel').textContent =
+        'Period ' + p.periodNumber + ': ' + new Date(p.start).toLocaleDateString() + ' - ' + new Date(p.end).toLocaleDateString();
+      renderTable();
+    }).catch(err => setStatus('Could not load report: ' + err.message, 'err'));
+  }
+
+  function renderTable() {
+    document.getElementById('reportBody').innerHTML = CURRENT_ROWS.map((r, i) => {
+      const rowId = 'row' + i;
+      const kpiLines = Object.entries(r.metrics || {}).map(([key, m]) => {
+        const label = { ATR_COMPLETION: 'ATR Completion', HANDOVER_SUBMISSION: 'Handover Submission', HANDOVER_CLOSEOUT: 'Handover Closeout' }[key] || key;
+        return '<div class="kpi-line">' + label + ': ' + (m ? (m.actual + '/' + m.planned + ' (' + Math.round(m.pct*100) + '%)') : 'No data this period') + '</div>';
+      }).join('');
+      return `
+        <tr onclick="toggleExpand('${rowId}')" style="cursor:pointer;">
+          <td>${r.teamSize > 0 ? '&#9656;' : ''}</td>
+          <td>${r.name}</td>
+          <td><span class="tier-pill">${r.role}</span></td>
+          <td>${r.cluster || ''}</td>
+          <td>${r.division || ''}</td>
+          <td><span class="score-pill ${scoreClass(r.ownScore)}">${fmtPct(r.ownScore)}</span></td>
+          <td>${r.teamSize}${r.teamSize > 0 ? '<div class="team-note">direct reports</div>' : ''}</td>
+          <td><span class="score-pill ${scoreClass(r.blendedScore)}">${fmtPct(r.blendedScore)}</span></td>
+        </tr>
+        <tr class="expand-row" id="${rowId}"><td colspan="8"><div class="kpi-detail">${kpiLines || 'No system KPI data for this period.'}</div></td></tr>
+      `;
+    }).join('') || '<tr><td colspan="8" style="text-align:center;color:#8891a0;">No personnel match the current filters.</td></tr>';
+  }
+
+  function toggleExpand(rowId) {
+    document.getElementById(rowId).classList.toggle('show');
+  }
+
+  function onGateUnlocked() {
+    buildPeriodOptions();
+    loadFilterOptions();
+    loadReport();
+  }
+</script>
+</body>
+</html>
