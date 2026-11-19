@@ -362,9 +362,11 @@
         <button class="btn btn-ghost" onclick="reinstallTriggers()">Reinstall Time Triggers</button>
         <button class="btn btn-ghost" onclick="sendTestEmail()">Send Test Email</button>
         <button class="btn btn-ghost" onclick="fixPhotoPermissions()">Fix Photo Permissions (make viewable by everyone)</button>
+        <button class="btn btn-ghost" onclick="repairSheetHeaders()">Repair Missing Sheet Headers</button>
         <button class="btn btn-danger" onclick="removeSample()">Remove Sample/Template Data</button>
         <button class="btn btn-danger" onclick="confirmClearLog()">Clear System Log</button>
       </div>
+      <div id="repairHeadersStatus" style="margin-top:10px;font-size:12px;display:none;padding:8px 12px;border-radius:8px;white-space:pre-line;"></div>
     </div>
   </div>
 </div>
@@ -615,6 +617,28 @@ function sendTestEmail() {
     adminPost('sendTestEmail', {}, key).then(function(r) {
       setActionStatus(r.success ? r.message : r.error, r.success ? 'ok' : 'err');
     }).catch(function(err) { setActionStatus('Error: ' + err.message, 'err'); });
+  });
+}
+
+function repairSheetHeaders() {
+  requireAdminKey('Repair any sheet whose header row is missing columns the current Code.gs expects? Only ADDS missing trailing columns - never removes or reorders anything existing.', function(key) {
+    const el = document.getElementById('repairHeadersStatus');
+    el.style.display = 'block';
+    el.style.background = '#eceff1';
+    el.textContent = 'Checking all sheets...';
+    adminPost('repairSheetHeaders', {}, key).then(function(r) {
+      if (!r.success) {
+        el.style.background = '#fdecea'; el.style.color = '#c62828';
+        el.textContent = 'Error: ' + r.error;
+        return;
+      }
+      el.style.background = '#e8f5e9'; el.style.color = '#2e7d32';
+      el.textContent = r.report.join('\n');
+      runAll();
+    }).catch(function(err) {
+      el.style.background = '#fdecea'; el.style.color = '#c62828';
+      el.textContent = 'Error: ' + err.message;
+    });
   });
 }
 
