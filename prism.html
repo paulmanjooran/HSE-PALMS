@@ -43,6 +43,10 @@
   .score-low { background: var(--red); }
   .score-none { background: #b0b6bd; }
   .tier-pill { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 8px; background: rgba(33,64,154,0.1); color: var(--blue); }
+  .perf-tier-pill { font-size: 10.5px; font-weight: 800; padding: 3px 10px; border-radius: 10px; color: #fff; white-space: nowrap; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; background: #e2e4e6; display: block; }
+  .avatar-placeholder { width: 34px; height: 34px; border-radius: 50%; background: #d8dde2; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #8891a0; font-weight: 700; }
+  .dash-btn { background: rgba(33,64,154,0.1); color: var(--blue); border-radius: 7px; padding: 6px 11px; font-size: 11px; }
   .expand-row { display: none; }
   .expand-row.show { display: table-row; }
   .kpi-detail { font-size: 11.5px; color: #8891a0; padding: 10px 16px; }
@@ -51,6 +55,29 @@
   #status { max-width: 1280px; margin: 12px auto; font-size: 13px; padding: 10px 14px; border-radius: 9px; display: none; }
   #status.ok { display: block; background: #e8f5e9; color: #2e7d32; }
   #status.err { display: block; background: #fdecea; color: #c62828; }
+
+  /* --- Person Dashboard --- */
+  #personDashboard { display: none; }
+  #personDashboard.show { display: block; }
+  .dash-header { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  .dash-avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; background: #e2e4e6; flex-shrink: 0; }
+  .dash-avatar-placeholder { width: 72px; height: 72px; border-radius: 50%; background: #d8dde2; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #8891a0; font-weight: 800; flex-shrink: 0; }
+  .dash-name { font-family: 'Manrope'; font-weight: 800; font-size: 19px; color: var(--dark); }
+  .dash-meta { font-size: 12px; color: #8891a0; margin-top: 2px; }
+  .dash-score-big { font-family: 'Manrope'; font-weight: 800; font-size: 32px; margin-left: auto; text-align: right; }
+  .dash-score-big .lbl { font-size: 10.5px; color: #8891a0; font-weight: 700; text-transform: uppercase; display: block; margin-top: 2px; }
+  .dash-close { background: rgba(0,0,0,0.05); color: var(--dark); border-radius: 50%; width: 30px; height: 30px; padding: 0; font-size: 15px; }
+  .kpi-card-row { display: flex; gap: 14px; margin-top: 18px; flex-wrap: wrap; }
+  .kpi-gauge-card { flex: 1; min-width: 180px; background: rgba(255,255,255,0.7); border-radius: 14px; padding: 16px; text-align: center; }
+  .kpi-gauge-card .kpi-tag { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; padding: 3px 10px; border-radius: 8px; display: inline-block; margin-bottom: 8px; }
+  .kpi-gauge-card.leading .kpi-tag { background: rgba(33,64,154,0.12); color: var(--blue); }
+  .kpi-gauge-card.lagging .kpi-tag { background: rgba(245,130,32,0.14); color: #a85a0a; }
+  .kpi-gauge-card .kpi-val { font-family: 'Manrope'; font-weight: 800; font-size: 26px; }
+  .kpi-gauge-card .kpi-desc { font-size: 10.5px; color: #8891a0; margin-top: 4px; }
+  .chart-row { display: flex; gap: 16px; margin-top: 18px; flex-wrap: wrap; }
+  .chart-box { flex: 1; min-width: 320px; background: rgba(255,255,255,0.7); border-radius: 14px; padding: 16px; }
+  .chart-box h4 { font-family: 'Manrope'; font-size: 12.5px; margin: 0 0 10px; color: var(--dark); }
+  .chart-box canvas { max-height: 220px; }
 </style>
 <style>
   #loginGate {
@@ -72,6 +99,7 @@
   #loginGate #forgotSection { display: none; }
   #appContent { display: none; }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 </head>
 <body>
 <div id="loginGate">
@@ -163,10 +191,12 @@
   <div class="sub">HSE Advisors Performance Review and Improvement System Manager</div>
   <div class="note">
     Scores blend each person's own completion data (70%) with their direct reports' average
-    score (30%), rolling HSE Advisor &rarr; Site HSE Lead &rarr; Cluster HSE Lead. Only 3 KPIs per
-    tier are calculated automatically right now (ATR Completion, Handover Submission
-    Completeness, Received Handover Timely Closeout) - the rest show "Not Configured" until
-    manual entry is built.
+    score (30%), rolling HSE Advisor &rarr; Site HSE Lead &rarr; Cluster HSE Lead. Performance
+    tiers: Leading &ge;85%, On Track 65&ndash;84%, Needs Attention &lt;65%. Handover Submission
+    Completeness is a Leading (preventive) indicator; ATR Completion and Handover Closeout are
+    Lagging (outcome) indicators, both weighted by timeliness - finishing late counts for less
+    than finishing on time. Click "Dashboard" on any row for the full photo, trend chart, and
+    task-type breakdown.
   </div>
 
   <div class="filter-bar">
@@ -185,11 +215,48 @@
 <div class="card">
   <table>
     <thead>
-      <tr><th></th><th>Name</th><th>Tier</th><th>Cluster</th><th>Division</th><th>Own Score</th><th>Team Size</th><th>Blended Score</th></tr>
+      <tr><th></th><th></th><th>Name</th><th>Role</th><th>Perf. Tier</th><th>Cluster</th><th>Division</th><th>Own Score</th><th>Team Size</th><th>Blended Score</th><th></th></tr>
     </thead>
     <tbody id="reportBody"></tbody>
   </table>
 </div>
+
+<div class="card" id="personDashboard">
+  <div class="dash-header">
+    <button class="dash-close" onclick="closePersonDashboard()">&times;</button>
+    <div id="dashAvatarWrap"></div>
+    <div>
+      <div class="dash-name" id="dashName"></div>
+      <div class="dash-meta" id="dashMeta"></div>
+    </div>
+    <div class="dash-score-big" id="dashBigScore"></div>
+  </div>
+
+  <div class="kpi-card-row">
+    <div class="kpi-gauge-card leading">
+      <span class="kpi-tag">Leading</span>
+      <div class="kpi-val" id="dashLeadingVal">-</div>
+      <div class="kpi-desc">Process quality (preventive) - Handover Submission Completeness</div>
+    </div>
+    <div class="kpi-gauge-card lagging">
+      <span class="kpi-tag">Lagging</span>
+      <div class="kpi-val" id="dashLaggingVal">-</div>
+      <div class="kpi-desc">Outcomes (reactive) - ATR Completion &amp; Handover Closeout, timeliness-weighted</div>
+    </div>
+  </div>
+
+  <div class="chart-row">
+    <div class="chart-box">
+      <h4>Performance Trend - Last 6 Periods (~3 months)</h4>
+      <canvas id="trendChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <h4>ATR Items by Task Type (All-Time)</h4>
+      <canvas id="categoryChart"></canvas>
+    </div>
+  </div>
+</div>
+
 <div id="status"></div>
 </div>
 
@@ -265,6 +332,16 @@
     }).catch(err => setStatus('Could not load report: ' + err.message, 'err'));
   }
 
+  function avatarHtml(photoUrl, name, size) {
+    const initials = (name || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    const cls = size === 'big' ? 'dash-avatar' : 'avatar';
+    const placeholderCls = size === 'big' ? 'dash-avatar-placeholder' : 'avatar-placeholder';
+    if (photoUrl) {
+      return `<img class="${cls}" src="${photoUrl}" onerror="this.outerHTML='<div class=&quot;${placeholderCls}&quot;>${initials}</div>';">`;
+    }
+    return `<div class="${placeholderCls}">${initials}</div>`;
+  }
+
   function renderTable() {
     document.getElementById('reportBody').innerHTML = CURRENT_ROWS.map((r, i) => {
       const rowId = 'row' + i;
@@ -272,24 +349,119 @@
         const label = { ATR_COMPLETION: 'ATR Completion', HANDOVER_SUBMISSION: 'Handover Submission', HANDOVER_CLOSEOUT: 'Handover Closeout' }[key] || key;
         return '<div class="kpi-line">' + label + ': ' + (m ? (m.actual + '/' + m.planned + ' (' + Math.round(m.pct*100) + '%)') : 'No data this period') + '</div>';
       }).join('');
+      const tier = r.tier || { tier: 'No Data', color: '#b0b6bd' };
       return `
         <tr onclick="toggleExpand('${rowId}')" style="cursor:pointer;">
+          <td>${avatarHtml(r.photoUrl, r.name, 'small')}</td>
           <td>${r.teamSize > 0 ? '&#9656;' : ''}</td>
           <td>${r.name}</td>
           <td><span class="tier-pill">${r.role}</span></td>
+          <td><span class="perf-tier-pill" style="background:${tier.color};">${tier.tier}</span></td>
           <td>${r.cluster || ''}</td>
           <td>${r.division || ''}</td>
           <td><span class="score-pill ${scoreClass(r.ownScore)}">${fmtPct(r.ownScore)}</span></td>
           <td>${r.teamSize}${r.teamSize > 0 ? '<div class="team-note">direct reports</div>' : ''}</td>
           <td><span class="score-pill ${scoreClass(r.blendedScore)}">${fmtPct(r.blendedScore)}</span></td>
+          <td><button class="dash-btn" onclick="event.stopPropagation(); openPersonDashboard('${r.employeeId}')">&#128202; Dashboard</button></td>
         </tr>
-        <tr class="expand-row" id="${rowId}"><td colspan="8"><div class="kpi-detail">${kpiLines || 'No system KPI data for this period.'}</div></td></tr>
+        <tr class="expand-row" id="${rowId}"><td colspan="11"><div class="kpi-detail">${kpiLines || 'No system KPI data for this period.'}</div></td></tr>
       `;
-    }).join('') || '<tr><td colspan="8" style="text-align:center;color:#8891a0;">No personnel match the current filters.</td></tr>';
+    }).join('') || '<tr><td colspan="11" style="text-align:center;color:#8891a0;">No personnel match the current filters.</td></tr>';
   }
 
   function toggleExpand(rowId) {
     document.getElementById(rowId).classList.toggle('show');
+  }
+
+  // --- Person Dashboard: photo, tier, Leading/Lagging KPI cards, trend + category charts ---
+  let trendChartInstance = null;
+  let categoryChartInstance = null;
+
+  function openPersonDashboard(employeeId) {
+    const periodNumber = document.getElementById('fPeriod').value;
+    fetch(BASE_URL + '?action=prismPersonDashboard&employeeId=' + encodeURIComponent(employeeId) + '&periodNumber=' + encodeURIComponent(periodNumber))
+      .then(r => r.json())
+      .then(result => {
+        if (!result.success) { setStatus('Error: ' + result.error, 'err'); return; }
+        renderPersonDashboard(result.data);
+      })
+      .catch(err => setStatus('Could not load dashboard: ' + err.message, 'err'));
+  }
+
+  function closePersonDashboard() {
+    document.getElementById('personDashboard').classList.remove('show');
+  }
+
+  function renderPersonDashboard(d) {
+    document.getElementById('dashAvatarWrap').innerHTML = avatarHtml(d.person.photoUrl, d.person.name, 'big');
+    document.getElementById('dashName').textContent = d.person.name;
+    document.getElementById('dashMeta').innerHTML =
+      d.person.role + ' &middot; ' + (d.person.cluster || '') + ' &middot; ' + (d.person.division || '') +
+      (d.teamSize > 0 ? ' &middot; ' + d.teamSize + ' direct report(s)' : '');
+    document.getElementById('dashBigScore').innerHTML =
+      fmtPct(d.blendedScore) + '<span class="lbl">' + d.tier.tier + '</span>';
+    document.getElementById('dashBigScore').style.color = d.tier.color;
+
+    document.getElementById('dashLeadingVal').textContent = fmtPct(d.leadingScore);
+    document.getElementById('dashLeadingVal').style.color = d.leadingScore === null ? '#8891a0' : (d.leadingScore >= 0.85 ? '#2e7d32' : d.leadingScore >= 0.65 ? '#f58220' : '#c62828');
+    document.getElementById('dashLaggingVal').textContent = fmtPct(d.laggingScore);
+    document.getElementById('dashLaggingVal').style.color = d.laggingScore === null ? '#8891a0' : (d.laggingScore >= 0.85 ? '#2e7d32' : d.laggingScore >= 0.65 ? '#f58220' : '#c62828');
+
+    renderTrendChart(d.trend);
+    renderCategoryChart(d.categoryBreakdown);
+
+    document.getElementById('personDashboard').classList.add('show');
+    document.getElementById('personDashboard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function renderTrendChart(trend) {
+    if (trendChartInstance) trendChartInstance.destroy();
+    const ctx = document.getElementById('trendChart').getContext('2d');
+    trendChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: trend.map(t => t.label),
+        datasets: [{
+          label: 'Blended Score',
+          data: trend.map(t => t.blendedScore === null ? null : Math.round(t.blendedScore * 100)),
+          borderColor: '#21409a', backgroundColor: 'rgba(33,64,154,0.12)',
+          tension: 0.3, fill: true, spanGaps: true, pointRadius: 4, pointBackgroundColor: '#21409a'
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: { y: { min: 0, max: 100, ticks: { callback: v => v + '%' } } },
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
+
+  function renderCategoryChart(categoryBreakdown) {
+    if (categoryChartInstance) categoryChartInstance.destroy();
+    const categories = Object.keys(categoryBreakdown || {});
+    const ctx = document.getElementById('categoryChart').getContext('2d');
+    if (categories.length === 0) {
+      categoryChartInstance = null;
+      ctx.canvas.getContext('2d').clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      return;
+    }
+    categoryChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: categories,
+        datasets: [
+          { label: 'Timely', data: categories.map(c => categoryBreakdown[c].timely), backgroundColor: '#2e7d32' },
+          { label: 'Delayed', data: categories.map(c => categoryBreakdown[c].delayed), backgroundColor: '#f58220' },
+          { label: 'Overdue', data: categories.map(c => categoryBreakdown[c].overdue), backgroundColor: '#c62828' },
+          { label: 'Open', data: categories.map(c => categoryBreakdown[c].open), backgroundColor: '#b0b6bd' }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: { x: { stacked: true, ticks: { font: { size: 9 } } }, y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 } } },
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } }
+      }
+    });
   }
 
   function onGateUnlocked() {
