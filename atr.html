@@ -91,6 +91,8 @@
   #loginGate #forgotSection { display: none; }
   #appContent { display: none; }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 <div id="loginGate">
@@ -198,7 +200,7 @@
 </div>
 <div id="status"></div>
 
-<div class="card">
+<div class="card" id="atrExportCard">
   <h2>Open &amp; Recent Items</h2>
   <div class="filter-bar">
     <select id="statusFilter" onchange="renderTable()">
@@ -210,8 +212,10 @@
       <option>Manual</option><option>LFI CORE</option><option>STAC</option><option>Handover</option>
     </select>
     <button class="btn-ghost" onclick="loadATR()">&#8635; Refresh</button>
+    <button class="btn-ghost" onclick="exportTableToCSV('#atrTable', 'ATR_Export')">&#8595; CSV</button>
+    <button class="btn-ghost" onclick="exportToPDF('#atrExportCard', 'ATR_Export')">&#8595; PDF</button>
   </div>
-  <table>
+  <table id="atrTable">
     <thead><tr><th></th><th>Description</th><th>Owner</th><th>Source</th><th>Due</th><th>Status</th><th></th></tr></thead>
     <tbody id="atrBody"></tbody>
   </table>
@@ -478,6 +482,45 @@
         loadATR();
       })
       .catch(err => { btn.disabled = false; btn.textContent = 'Add ATR Item'; setStatus('Failed: ' + err.message, 'err'); });
+  }
+
+  // Shared export utility - exports whatever is currently visible (respects
+  // active filters, since it reads the rendered table, not the raw data array).
+  function exportTableToCSV(tableSelector, filenameBase) {
+    const table = document.querySelector(tableSelector);
+    if (!table) return;
+    const rows = Array.from(table.querySelectorAll('tr'));
+    const csv = rows.map(row => {
+      const cells = Array.from(row.querySelectorAll('th, td'));
+      return cells.map(cell => {
+        let text = cell.innerText.replace(/\s+/g, ' ').trim();
+        if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+          text = '"' + text.replace(/"/g, '""') + '"';
+        }
+        return text;
+      }).join(',');
+    }).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filenameBase + '_' + new Date().toISOString().slice(0, 10) + '.csv';
+    link.click();
+  }
+
+  function exportToPDF(containerSelector, filenameBase) {
+    const el = document.querySelector(containerSelector);
+    if (!el) return;
+    html2canvas(el, { backgroundColor: '#ffffff', scale: 2, useCORS: true }).then(canvas => {
+      const imgData = canvas.toDataURL('image/png');
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('l', 'pt', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pageWidth - 40;
+      const imgHeight = Math.min(canvas.height * imgWidth / canvas.width, pageHeight - 40);
+      pdf.addImage(imgData, 'PNG', 20, 20, imgWidth, imgHeight);
+      pdf.save(filenameBase + '_' + new Date().toISOString().slice(0, 10) + '.pdf');
+    });
   }
 
   function onGateUnlocked() {
