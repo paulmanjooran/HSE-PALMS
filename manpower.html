@@ -68,6 +68,8 @@
   #loginGate #forgotSection { display: none; }
   #appContent { display: none; }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 <div id="loginGate">
@@ -168,11 +170,13 @@
     <div><label>Your Employee ID *</label><input type="text" id="enteredById" placeholder="e.g. 118022" required></div>
     <div><label>Month *</label><input type="month" id="monthPicker" required></div>
     <div><button id="loadBtn" onclick="loadMonth()" style="background:rgba(33,64,154,0.1);color:var(--blue);">Load / Refresh Month</button></div>
+    <div><button onclick="exportTableToCSV('#manpowerTable', 'HSE_Manpower_Ratio')" style="background:#f2f4f6;color:var(--dark);">&#8595; CSV</button></div>
+    <div><button onclick="exportToPDF('#manpowerExportCard', 'HSE_Manpower_Ratio')" style="background:#f2f4f6;color:var(--dark);">&#8595; PDF</button></div>
   </div>
 </div>
 
-<div class="card">
-  <table>
+<div class="card" id="manpowerExportCard">
+  <table id="manpowerTable">
     <thead>
       <tr>
         <th rowspan="2">Cluster</th>
@@ -322,6 +326,43 @@
         btn.disabled = false; btn.textContent = 'Save Month';
         setStatus('Failed: ' + err.message, 'err');
       });
+  }
+
+  function exportTableToCSV(tableSelector, filenameBase) {
+    const table = document.querySelector(tableSelector);
+    if (!table) return;
+    const rows = Array.from(table.querySelectorAll('tr'));
+    const csv = rows.map(row => {
+      const cells = Array.from(row.querySelectorAll('th, td'));
+      return cells.map(cell => {
+        let text = cell.innerText.replace(/\s+/g, ' ').trim();
+        if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+          text = '"' + text.replace(/"/g, '""') + '"';
+        }
+        return text;
+      }).join(',');
+    }).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filenameBase + '_' + new Date().toISOString().slice(0, 10) + '.csv';
+    link.click();
+  }
+
+  function exportToPDF(containerSelector, filenameBase) {
+    const el = document.querySelector(containerSelector);
+    if (!el) return;
+    html2canvas(el, { backgroundColor: '#ffffff', scale: 2, useCORS: true }).then(canvas => {
+      const imgData = canvas.toDataURL('image/png');
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('l', 'pt', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pageWidth - 40;
+      const imgHeight = Math.min(canvas.height * imgWidth / canvas.width, pageHeight - 40);
+      pdf.addImage(imgData, 'PNG', 20, 20, imgWidth, imgHeight);
+      pdf.save(filenameBase + '_' + new Date().toISOString().slice(0, 10) + '.pdf');
+    });
   }
 
   function onGateUnlocked() {
