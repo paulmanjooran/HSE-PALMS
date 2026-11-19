@@ -230,11 +230,51 @@
 
   function setStatus(msg, cls) { const el = document.getElementById('status'); el.className = cls; el.textContent = msg; }
 
+  let PERSONNEL_OPTIONS_HTML = '';
+
   function loadEmployees() {
     fetch(BASE_URL + '?action=api').then(r => r.json()).then(data => {
-      const options = (data.personnel || []).map(p => '<option value="' + p.employeeId + '">' + p.employeeId + ' - ' + p.name + '</option>').join('');
-      document.getElementById('ownerId').innerHTML = '<option value="">Select Employee ID</option>' + options;
-      document.getElementById('accountableId').innerHTML = '<option value="">None - no closeout notification will be sent</option>' + options;
+      PERSONNEL_OPTIONS_HTML = (data.personnel || []).map(p => '<option value="' + p.employeeId + '">' + p.employeeId + ' - ' + p.name + '</option>').join('');
+      document.getElementById('ownerId').innerHTML = '<option value="">Select Employee ID</option>' + PERSONNEL_OPTIONS_HTML;
+      document.getElementById('accountableId').innerHTML = '<option value="">None - no closeout notification will be sent</option>' + PERSONNEL_OPTIONS_HTML;
+    });
+  }
+
+  function populateReassignDropdown() {
+    document.getElementById('reassignToId').innerHTML = '<option value="">Select new owner</option>' + PERSONNEL_OPTIONS_HTML;
+  }
+
+  function submitReassign(atrId) {
+    const reassignedById = document.getElementById('reassignById').value.trim();
+    const newOwnerId = document.getElementById('reassignToId').value;
+    const reason = document.getElementById('reassignReason').value.trim();
+    const statusEl = document.getElementById('reassignStatus');
+    const btn = document.getElementById('reassignBtn');
+
+    if (!reassignedById) { statusEl.style.display='block'; statusEl.style.background='#fdecea'; statusEl.style.color='#c62828'; statusEl.textContent = 'Enter your Employee ID.'; return; }
+    if (!newOwnerId) { statusEl.style.display='block'; statusEl.style.background='#fdecea'; statusEl.style.color='#c62828'; statusEl.textContent = 'Select who to reassign this to.'; return; }
+
+    btn.disabled = true; btn.textContent = 'Reassigning...';
+    statusEl.style.display = 'block'; statusEl.style.background = '#eceff1'; statusEl.style.color = '#4d555b'; statusEl.textContent = 'Saving...';
+
+    fetch(BASE_URL, { method: 'POST', body: JSON.stringify({
+      action: 'reassignAtrItem',
+      payload: { atrId: atrId, reassignedById: reassignedById, newOwnerId: newOwnerId, reason: reason }
+    })})
+    .then(r => r.json())
+    .then(result => {
+      btn.disabled = false; btn.textContent = 'Reassign Action';
+      if (!result.success) {
+        statusEl.style.background = '#fdecea'; statusEl.style.color = '#c62828'; statusEl.textContent = 'Error: ' + result.error;
+        return;
+      }
+      statusEl.style.background = '#e8f5e9'; statusEl.style.color = '#2e7d32'; statusEl.textContent = '\u2713 Reassigned to ' + result.newOwnerName + '. Both parties notified.';
+      loadATR();
+      setTimeout(closeDrawer, 1500);
+    })
+    .catch(err => {
+      btn.disabled = false; btn.textContent = 'Reassign Action';
+      statusEl.style.background = '#fdecea'; statusEl.style.color = '#c62828'; statusEl.textContent = 'Failed: ' + err.message;
     });
   }
 
@@ -334,10 +374,26 @@
         </div>
         <div id="drawerStatus" style="margin-top:10px;font-size:12.5px;font-weight:600;padding:10px 12px;border-radius:8px;display:none;"></div>
         <button class="btn-primary" id="drawerCloseoutBtn" onclick="submitCloseout('${atrId}')">Mark Complete &amp; Notify Accountable</button>
+
+        <div class="drawer-section" style="border-top:1px solid #e2e4e6;padding-top:16px;">
+          <div class="drawer-label">Reassign Action</div>
+          <div style="font-size:11px;color:#8891a0;margin-bottom:8px;">
+            Restricted to HSE Site Leads and HSE Cluster Leads - for emergency leave, sick leave, or vacation coverage.
+          </div>
+          <label style="display:block;font-size:10.5px;font-weight:700;color:#8891a0;text-transform:uppercase;margin-top:8px;">Your Employee ID</label>
+          <input type="text" id="reassignById" placeholder="e.g. 503361" style="width:100%;padding:7px 9px;border-radius:6px;border:1px solid #dfe3e7;font-size:12.5px;margin-top:3px;">
+          <label style="display:block;font-size:10.5px;font-weight:700;color:#8891a0;text-transform:uppercase;margin-top:10px;">Reassign To</label>
+          <select id="reassignToId" style="width:100%;padding:7px 9px;border-radius:6px;border:1px solid #dfe3e7;font-size:12.5px;margin-top:3px;"></select>
+          <label style="display:block;font-size:10.5px;font-weight:700;color:#8891a0;text-transform:uppercase;margin-top:10px;">Reason (optional)</label>
+          <input type="text" id="reassignReason" placeholder="e.g. Emergency leave" style="width:100%;padding:7px 9px;border-radius:6px;border:1px solid #dfe3e7;font-size:12.5px;margin-top:3px;">
+          <div id="reassignStatus" style="margin-top:10px;font-size:12px;font-weight:600;padding:9px 12px;border-radius:8px;display:none;"></div>
+          <button style="width:100%;margin-top:12px;background:rgba(33,64,154,0.1);color:var(--blue);padding:10px;" id="reassignBtn" onclick="submitReassign('${atrId}')">Reassign Action</button>
+        </div>
       `;
     }
 
     document.getElementById('drawerContent').innerHTML = html;
+    if (!isClosed) populateReassignDropdown();
     document.getElementById('drawerOverlay').classList.add('show');
     document.getElementById('drawerPanel').classList.add('show');
   }
