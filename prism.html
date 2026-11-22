@@ -56,9 +56,16 @@
   #status.ok { display: block; background: #e8f5e9; color: #2e7d32; }
   #status.err { display: block; background: #fdecea; color: #c62828; }
 
-  /* --- Person Dashboard --- */
-  #personDashboard { display: none; }
+  /* --- Person Dashboard: big modal popup, not an inline card --- */
+  #dashboardOverlay { position: fixed; inset: 0; background: rgba(20,25,35,0.55); z-index: 600; display: none; }
+  #dashboardOverlay.show { display: block; }
+  #personDashboard {
+    display: none; position: fixed; top: 4vh; left: 50%; transform: translateX(-50%);
+    width: 88vw; max-width: 1180px; height: 92vh; z-index: 601;
+    overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+  }
   #personDashboard.show { display: block; }
+  .dash-close { position: absolute; top: 18px; right: 18px; }
   .dash-header { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
   .dash-avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; background: #e2e4e6; flex-shrink: 0; }
   .dash-avatar-placeholder { width: 72px; height: 72px; border-radius: 50%; background: #d8dde2; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #8891a0; font-weight: 800; flex-shrink: 0; }
@@ -225,6 +232,7 @@
   </table>
 </div>
 
+<div id="dashboardOverlay" onclick="closePersonDashboard()"></div>
 <div class="card" id="personDashboard">
   <div class="dash-header">
     <button class="dash-close" onclick="closePersonDashboard()">&times;</button>
@@ -394,6 +402,7 @@
 
   function closePersonDashboard() {
     document.getElementById('personDashboard').classList.remove('show');
+    document.getElementById('dashboardOverlay').classList.remove('show');
   }
 
   function renderPersonDashboard(d) {
@@ -415,7 +424,7 @@
     renderCategoryChart(d.categoryBreakdown);
 
     document.getElementById('personDashboard').classList.add('show');
-    document.getElementById('personDashboard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('dashboardOverlay').classList.add('show');
   }
 
   function renderTrendChart(trend) {
